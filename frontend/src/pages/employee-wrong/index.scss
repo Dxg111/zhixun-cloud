@@ -1,0 +1,244 @@
+.employee-wrong-page {
+  min-height: 100vh;
+  padding: 28px 32px 100px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fcfaf6 0%, #f5f1ea 100%);
+}
+
+.employee-wrong-hero {
+  padding: 30px 28px;
+  border-radius: 32px;
+  border: 2px solid #f0e2d6;
+  background: #fffdfb;
+}
+
+.employee-wrong-title {
+  display: block;
+  font-size: 40px;
+  font-weight: 800;
+  color: #1f2d37;
+}
+
+.employee-wrong-desc {
+  display: block;
+  margin-top: 12px;
+  font-size: 24px;
+  line-height: 1.6;
+  color: #80909e;
+}
+
+.employee-wrong-tabs {
+  display: flex;
+  gap: 16px;
+  margin: 24px 0 18px;
+}
+
+.employee-wrong-tab {
+  flex: 1;
+  height: 68px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e9e1d8;
+  background: #fff;
+  color: #80909e;
+  font-size: 25px;
+  font-weight: 700;
+
+  &.is-active {
+    border-color: #f0d9c6;
+    background: #fff7ef;
+    color: #cb6227;
+  }
+}
+
+.employee-wrong-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.employee-wrong-card {
+  padding: 26px;
+  border-radius: 30px;
+  border: 2px solid #ede4da;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(174, 132, 96, 0.07);
+}
+
+.employee-wrong-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.employee-wrong-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.employee-wrong-point {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #fff1e6;
+  color: #cb6227;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.employee-wrong-count,
+.employee-wrong-streak {
+  font-size: 21px;
+  color: #9aa6b0;
+}
+
+.employee-wrong-mastered {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #eff9f3;
+  color: #29986d;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.employee-wrong-stem {
+  display: block;
+  margin-top: 16px;
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: #2b3340;
+  word-break: break-word;
+}
+
+.employee-wrong-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.employee-wrong-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  border: 2px solid #ede4da;
+  background: #fffdfb;
+
+  &.is-selected {
+    border-color: #ffb27a;
+    background: #fff7ef;
+  }
+}
+
+.employee-wrong-option-key {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f2ed;
+  color: #7f6347;
+  font-size: 22px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.employee-wrong-option-text {
+  flex: 1;
+  font-size: 25px;
+  line-height: 1.55;
+  color: #465762;
+  word-break: break-word;
+}
+
+.employee-wrong-result {
+  margin-top: 18px;
+  padding: 20px;
+  border-radius: 22px;
+  border: 2px solid #f0d9c6;
+  background: #fff7ef;
+
+  &.is-pass {
+    border-color: #c9e8d9;
+    background: #f2fbf6;
+  }
+}
+
+.employee-wrong-result-title {
+  display: block;
+  font-size: 25px;
+  font-weight: 800;
+  color: #1f2d37;
+}
+
+.employee-wrong-result-answer {
+  display: block;
+  margin-top: 10px;
+  font-size: 24px;
+  color: #5a6a78;
+}
+
+.employee-wrong-result-explanation {
+  display: block;
+  margin-top: 12px;
+  font-size: 24px;
+  line-height: 1.7;
+  color: #5b4331;
+}
+
+.employee-wrong-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.employee-wrong-btn {
+  flex: 1;
+  min-width: 150px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e6ece8;
+  background: #f7fbf8;
+  color: #29986d;
+  font-size: 23px;
+  font-weight: 700;
+
+  &.is-primary {
+    border-color: #f0d9c6;
+    background: #fff7ef;
+    color: #cb6227;
+  }
+
+  &.is-disabled {
+    opacity: 0.6;
+  }
+}
+
+.employee-wrong-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 96px 24px;
+  border-radius: 32px;
+  background: #fff;
+  color: #80909e;
+  font-size: 26px;
+}
+
+.employee-wrong-empty-icon {
+  font-size: 56px;
+}
