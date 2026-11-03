@@ -1,11 +1,13 @@
 """FastAPI 应用入口"""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.routes import (
     admin_accounts,
@@ -68,6 +70,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 用户头像静态目录
+_avatar_dir = Path(get_settings().avatar_upload_dir).resolve()
+_avatar_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/media/avatars", StaticFiles(directory=str(_avatar_dir)), name="avatars")
 
 # 注册路由
 app.include_router(health.router, prefix="/api/v1")

@@ -61,19 +61,35 @@ export default function EmployeeCardsPage() {
   }
 
   return (
-    <View className='employee-cards-page'>
+    <View className='employee-cards-page paper-bg'>
       <View className='employee-cards-hero'>
+        <Text className='employee-cards-kicker'>考前资料</Text>
         <Text className='employee-cards-title'>考前速览</Text>
         <Text className='employee-cards-desc'>
           3–5 张知识卡，3 分钟读完。点击卡片展开要点，阅读状态会同步给管理员。
         </Text>
+        {cards.length > 0 && (
+          <View className='employee-cards-progress'>
+            <Text className='employee-cards-progress-text'>
+              已阅读 {cards.filter((card) => card.viewed).length} / {cards.length} 张
+            </Text>
+            <View className='employee-cards-progress-track'>
+              <View
+                className='employee-cards-progress-fill'
+                style={{
+                  width: `${(cards.filter((card) => card.viewed).length / cards.length) * 100}%`,
+                }}
+              />
+            </View>
+          </View>
+        )}
       </View>
 
       {loading ? (
         <View className='employee-cards-empty'><Text>正在加载知识卡...</Text></View>
       ) : cards.length === 0 ? (
         <View className='employee-cards-empty'>
-          <Text className='employee-cards-empty-icon'>📚</Text>
+          <View className='employee-cards-empty-mark'>—</View>
           <Text>本场考试暂未配置知识卡</Text>
         </View>
       ) : (

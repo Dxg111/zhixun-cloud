@@ -19,20 +19,21 @@ export default defineAppConfig({
     downloadFile: 600000,
   },
   window: {
-    backgroundTextStyle: 'light',
-    navigationBarBackgroundColor: '#fff',
+    backgroundTextStyle: 'dark',
+    backgroundColor: '#eceee6',
+    navigationBarBackgroundColor: '#eceee6',
     navigationBarTitleText: '智训云',
     navigationBarTextStyle: 'black',
   },
   tabBar: {
-    color: '#9b7d60',
-    selectedColor: '#df5f1f',
-    backgroundColor: '#fffbf8',
-    borderStyle: 'white',
+    color: '#6b7166',
+    selectedColor: '#1f4a38',
+    backgroundColor: '#fbfaf3',
+    borderStyle: 'black',
     list: [
       {
         pagePath: 'pages/index/index',
-        text: '闯关',
+        text: '学习',
         iconPath: 'assets/tab-home.png',
         selectedIconPath: 'assets/tab-home-active.png',
       },

@@ -108,7 +108,7 @@ export default function QuizPage() {
 
   if (!quizData || !currentQuestion) {
     return (
-      <View className='quiz-page'>
+      <View className='quiz-page paper-bg'>
         <View className='empty-state'>
           <Text>题目加载失败</Text>
           <View className='btn-primary' style={{ marginTop: '32px', width: '300px' }} onClick={handleClose}>
@@ -118,8 +118,6 @@ export default function QuizPage() {
       </View>
     )
   }
-
-  const progressPercent = ((currentIndex + 1) / totalQuestions) * 100
 
   // 判断选项状态
   const getOptionClass = (key: string) => {
@@ -139,20 +137,34 @@ export default function QuizPage() {
     currentQuestion.answer.every((a) => selectedAnswers.includes(a))
 
   return (
-    <View className='quiz-page'>
+    <View className='quiz-page paper-bg'>
       {/* 顶部栏 */}
       <View className='quiz-header'>
         <Text className='question-num'>第 {currentIndex + 1} / {totalQuestions} 题</Text>
         <View className='coin-badge-small'>
-          <Text className='coin-text'>{getCachedUser()?.total_xp ?? 0}</Text>
-          <Text className='coin-icon'>⭐</Text>
+          <Text className='coin-text num'>{getCachedUser()?.total_xp ?? 0}</Text>
+          <Text className='coin-icon'>XP</Text>
         </View>
       </View>
 
-      {/* 进度条 */}
+      {/* 学习线路：每题一个站点 */}
       <View className='quiz-progress'>
-        <View className='progress-track'>
-          <View className='progress-fill' style={{ width: `${progressPercent}%` }} />
+        <View className='quiz-route'>
+          <View className='quiz-route-rail' />
+          <View
+            className='quiz-route-rail is-done'
+            style={{
+              width: `${(currentIndex / Math.max(1, totalQuestions - 1)) * 100}%`,
+            }}
+          />
+          {questions.map((_, index) => (
+            <View
+              key={index}
+              className={`quiz-station ${index < currentIndex ? 'is-done' : ''} ${
+                index === currentIndex ? 'is-current' : ''
+              }`}
+            />
+          ))}
         </View>
         <View className='progress-meta'>
           <Text className='meta-text'>第 {currentIndex + 1} 题 / 共 {totalQuestions} 题</Text>

@@ -1,23 +1,46 @@
-/* 全局样式 - 基于 UI 原型设计系统 */
+/* 全局样式 - 智训云「学习航线 / 档案绿」设计系统 */
 
-/* 设计令牌 */
+/* 设计令牌：档案纸底、墨绿主色、印章红只用于时间与错误 */
 page {
-  --bg: #f6f4ef;
-  --panel: rgba(255, 255, 255, 0.92);
-  --text: #1f2d37;
-  --muted: #6c7b87;
-  --orange: #ff7a2f;
-  --orange-deep: #df5f1f;
-  --orange-soft: #fff1e6;
-  --green: #2e9e71;
-  --green-soft: #eff9f3;
-  --red: #ff6f5d;
-  --red-soft: #ffefec;
-  --blue: #4b9dff;
-  --blue-soft: #ebf4ff;
-  --line: #ecdccc;
+  --bg: #eceee6;
+  --bg-deep: #e3e4d9;
+  --surface: #fbfaf3;
+  --surface-soft: #f2f1e7;
 
-  font-family: 'PingFang SC', 'Noto Sans SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --text: #1b211b;
+  --text-strong: #171c17;
+  --muted: #6b7166;
+  --faint: #8a9084;
+
+  --line: #d6d8ca;
+  --line-strong: #b9bcab;
+
+  --primary: #1f4a38;
+  --primary-deep: #173b2d;
+  --primary-soft: #e9eee6;
+  --primary-line: #c3cdbf;
+
+  --green: #2f6b4f;
+  --green-soft: #e8efe7;
+  --red: #a23e2f;
+  --red-soft: #f3e6e1;
+
+  --amber: #6b7166;
+  --amber-soft: #f2f1e7;
+  --blue: #1f4a38;
+  --blue-soft: #e9eee6;
+
+  /* 兼容旧页面引用的橙色令牌 */
+  --orange: #1f4a38;
+  --orange-deep: #173b2d;
+  --orange-soft: #e9eee6;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-card: none;
+
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
   font-size: 28px;
@@ -28,6 +51,16 @@ page {
 
 view, text, image, button, input, textarea, scroll-view, swiper, navigator {
   box-sizing: border-box;
+}
+
+/* 档案纸底纹：横向细线，只提供质感，不干扰内容 */
+.paper-bg {
+  background-color: var(--bg);
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 59px,
+    rgba(27, 33, 27, 0.035) 59px 60px
+  );
 }
 
 /* 全局按钮重置 */
@@ -50,14 +83,18 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   min-height: 88px;
-  border-radius: 28px;
-  color: #fff;
-  background: linear-gradient(180deg, #ff944f, #ff6f27);
-  box-shadow: 0 20px 40px rgba(255, 122, 47, 0.24);
+  border-radius: var(--radius-md);
+  color: var(--surface);
+  background: var(--primary);
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  &:active {
+    background: var(--primary-deep);
+  }
 }
 
 .btn-secondary {
@@ -65,17 +102,22 @@ button {
   align-items: center;
   justify-content: center;
   min-height: 88px;
-  border-radius: 28px;
-  border: 2px solid #f0dbc9;
-  color: #cb6227;
-  background: #fff7f0;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--line-strong);
+  color: var(--text);
+  background: var(--surface);
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .card {
-  border-radius: 28px;
-  border: 2px solid #ede4da;
-  background: #fff;
-  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  background: var(--surface);
+  padding: 28px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }

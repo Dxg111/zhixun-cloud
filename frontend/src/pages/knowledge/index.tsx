@@ -164,7 +164,7 @@ export default function KnowledgePage() {
   }
 
   return (
-    <View className='knowledge-page'>
+    <View className='knowledge-page paper-bg'>
       <View className='knowledge-content'>
         <View className='upload-card' onClick={handleUpload}>
           <Text className='upload-icon'>{uploading ? '⏳' : '＋'}</Text>

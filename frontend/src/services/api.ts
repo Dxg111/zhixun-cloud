@@ -24,6 +24,20 @@ interface ApiResponse<T = any> {
   data: T
 }
 
+/** 过滤开发者工具产生的临时头像地址，避免图片请求 404 */
+export function getUsableAvatarUrl(url?: string | null): string {
+  if (!url) return ''
+  if (
+    url.startsWith('http://tmp/') ||
+    url.includes('/__tmp__/') ||
+    url.includes('127.0.0.1') ||
+    url.includes('localhost')
+  ) {
+    return ''
+  }
+  return url
+}
+
 /** 获取本地存储的 token */
 export function getToken(): string {
   return Taro.getStorageSync(TOKEN_KEY) || ''
@@ -187,6 +201,29 @@ export function loginByCode(code: string) {
   return request<LoginResponse>('/user/login', {
     method: 'POST',
     data: { code },
+  })
+}
+
+/** 上传小程序临时头像，返回持久化后的可访问地址 */
+export function uploadUserAvatar(filePath: string) {
+  const token = getToken()
+  return Taro.uploadFile({
+    url: `${BASE_URL}/user/avatar`,
+    filePath,
+    name: 'file',
+    timeout: 60000,
+    header: token ? { Authorization: `Bearer ${token}` } : {},
+  }).then((res) => {
+    let body: ApiResponse<{ avatar_url: string }>
+    try {
+      body = JSON.parse(res.data)
+    } catch {
+      throw new Error('头像上传失败，请稍后重试')
+    }
+    if (body.code !== 0) {
+      throw new Error(body.message || '头像上传失败')
+    }
+    return body.data.avatar_url
   })
 }
 

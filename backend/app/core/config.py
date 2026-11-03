@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     # 知识库 / 向量存储
     chroma_persist_dir: str = "./data/chroma"
     kb_upload_dir: str = "./data/uploads"
+    avatar_upload_dir: str = "./data/avatars"
     kb_max_documents_per_user: int = 10
     kb_max_file_size_mb: int = 10
     kb_chunk_size: int = 1000

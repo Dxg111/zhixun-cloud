@@ -1,3 +1,3 @@
 export default definePageConfig({
-  navigationBarTitleText: '闯关答题',
+  navigationBarTitleText: '在线答题',
 })

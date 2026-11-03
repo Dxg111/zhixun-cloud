@@ -1,45 +1,83 @@
+/* 考前知识卡 */
+
 .employee-cards-page {
   min-height: 100vh;
   padding: 28px 32px 140px;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #fcfaf6 0%, #f5f1ea 100%);
 }
 
 .employee-cards-hero {
-  padding: 30px 28px;
-  border-radius: 32px;
-  border: 2px solid #f0e2d6;
-  background: #fffdfb;
+  padding: 28px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.employee-cards-kicker {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--primary);
 }
 
 .employee-cards-title {
   display: block;
-  font-size: 40px;
-  font-weight: 800;
-  color: #1f2d37;
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--text-strong);
 }
 
 .employee-cards-desc {
   display: block;
-  margin-top: 12px;
-  font-size: 24px;
-  line-height: 1.6;
-  color: #80909e;
+  margin-top: 10px;
+  font-size: 23px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.employee-cards-progress {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 2px solid var(--line);
+}
+
+.employee-cards-progress-text {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 20px;
+  color: var(--faint);
+}
+
+.employee-cards-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #d6d8ca;
+}
+
+.employee-cards-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.3s ease;
 }
 
 .employee-cards-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 24px;
+  gap: 16px;
+  margin-top: 20px;
 }
 
 .employee-card-item {
   padding: 26px;
-  border-radius: 30px;
-  border: 2px solid #ede4da;
-  background: #fff;
-  box-shadow: 0 12px 30px rgba(174, 132, 96, 0.07);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 
 .employee-card-head {
@@ -52,77 +90,77 @@
 .employee-card-title-wrap {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
 
 .employee-card-title {
-  font-size: 31px;
-  font-weight: 800;
-  color: #1f2d37;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-strong);
   word-break: break-word;
 }
 
 .employee-card-read-tag {
   flex-shrink: 0;
-  padding: 4px 14px;
-  border-radius: 999px;
-  background: #f1f2f3;
-  color: #8b98a3;
-  font-size: 20px;
-  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  background: #e6e7dd;
+  color: var(--faint);
+  font-size: 18px;
+  font-weight: 500;
 
   &.is-read {
-    background: #eff9f3;
-    color: #29986d;
+    background: var(--green-soft);
+    color: var(--green);
   }
 }
 
 .employee-card-toggle {
   flex-shrink: 0;
-  font-size: 23px;
-  color: #cb6227;
-  font-weight: 700;
+  font-size: 21px;
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .employee-card-excerpt {
   display: block;
   margin-top: 14px;
-  font-size: 25px;
+  font-size: 24px;
   line-height: 1.7;
-  color: #5a6a78;
+  color: var(--muted);
 }
 
 .employee-card-source {
   display: block;
-  margin-top: 12px;
-  font-size: 21px;
-  color: #9aa6b0;
+  margin-top: 10px;
+  font-size: 20px;
+  color: var(--faint);
 }
 
 .employee-card-content {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 2px dashed #f0e2d6;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 2px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 .employee-card-point-heading {
   display: block;
-  font-size: 26px;
-  font-weight: 800;
-  color: #cb6227;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--primary);
 }
 
 .employee-card-point-body {
   display: block;
-  margin-top: 8px;
-  font-size: 25px;
+  margin-top: 6px;
+  font-size: 24px;
   line-height: 1.75;
-  color: #465762;
+  color: var(--text);
   word-break: break-word;
 }
 
@@ -130,28 +168,38 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-top: 24px;
-  padding: 96px 24px;
-  border-radius: 32px;
-  background: #fff;
-  color: #80909e;
-  font-size: 26px;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 88px 24px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  background: var(--surface);
+  color: var(--faint);
+  font-size: 24px;
 }
 
-.employee-cards-empty-icon {
-  font-size: 56px;
-}
-
-.employee-cards-action {
-  height: 92px;
-  margin-top: 32px;
-  border-radius: 999px;
+.employee-cards-empty-mark {
+  width: 64px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #ff944f, #ff6f27);
-  color: #fff;
-  font-size: 30px;
-  font-weight: 800;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  border: 2px solid var(--line);
+  color: var(--faint);
+  font-size: 28px;
+}
+
+.employee-cards-action {
+  height: 88px;
+  margin-top: 28px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: var(--surface);
+  font-size: 28px;
+  font-weight: 600;
 }

@@ -45,7 +45,11 @@ export default function EmployeeExamPage() {
 
   const questions = paper?.questions || []
   const currentQuestion = questions[currentIndex]
-  const progress = questions.length ? ((currentIndex + 1) / questions.length) * 100 : 0
+  const stationCount = 10
+  const currentStation = Math.min(
+    stationCount - 1,
+    Math.floor((currentIndex / Math.max(1, questions.length)) * stationCount),
+  )
 
   const loadPaper = async () => {
     if (!getEmployeeToken()) {
@@ -199,7 +203,7 @@ export default function EmployeeExamPage() {
 
   if (loading) {
     return (
-      <View className='employee-exam-page'>
+      <View className='employee-exam-page paper-bg'>
         <View className='employee-exam-empty'><Text>正在加载试卷...</Text></View>
       </View>
     )
@@ -207,14 +211,14 @@ export default function EmployeeExamPage() {
 
   if (!paper || !currentQuestion) {
     return (
-      <View className='employee-exam-page'>
+      <View className='employee-exam-page paper-bg'>
         <View className='employee-exam-empty'><Text>试卷加载失败</Text></View>
       </View>
     )
   }
 
   return (
-    <View className='employee-exam-page'>
+    <View className='employee-exam-page paper-bg'>
       <View
         className='employee-exam-cards-link'
         onClick={() => {
@@ -224,20 +228,39 @@ export default function EmployeeExamPage() {
           })
         }}
       >
-        <Text>📚 考前速览</Text>
+        <Text>考前速览</Text>
+        <Text className='employee-exam-cards-arrow'>›</Text>
       </View>
 
       <View className='employee-exam-head'>
-        <Text className='employee-exam-progress-text'>
-          第 {currentIndex + 1} / {questions.length} 题
-        </Text>
-        <Text className={`employee-exam-timer ${remaining <= 60 ? 'is-warning' : ''}`}>
-          {formatRemaining(remaining)}
-        </Text>
+        <View className='employee-exam-head-left'>
+          <Text className='employee-exam-kicker'>答题进度</Text>
+          <Text className='employee-exam-progress-text'>
+            第 {currentIndex + 1} / {questions.length} 题
+          </Text>
+        </View>
+        <View className='employee-exam-timer-block'>
+          <Text className='employee-exam-timer-label'>剩余时间</Text>
+          <Text className={`employee-exam-timer ${remaining <= 60 ? 'is-warning' : ''}`}>
+            {formatRemaining(remaining)}
+          </Text>
+        </View>
       </View>
 
-      <View className='employee-progress-track'>
-        <View className='employee-progress-fill' style={{ width: `${progress}%` }} />
+      <View className='employee-progress'>
+        <View className='employee-progress-rail' />
+        <View
+          className='employee-progress-rail is-done'
+          style={{ width: `${(currentStation / (stationCount - 1)) * 100}%` }}
+        />
+        {Array.from({ length: stationCount }).map((_, index) => (
+          <View
+            key={index}
+            className={`employee-progress-station ${
+              index < currentStation ? 'is-done' : ''
+            } ${index === currentStation ? 'is-current' : ''}`}
+          />
+        ))}
       </View>
 
       <View className='employee-question-card'>
@@ -286,6 +309,10 @@ export default function EmployeeExamPage() {
           <Text>{currentIndex < questions.length - 1 ? '下一题' : '提交答卷'}</Text>
         </View>
       </View>
+
+      <Text className='employee-exam-autosave'>
+        答案已自动保存，倒计时结束后系统将自动交卷
+      </Text>
     </View>
   )
 }

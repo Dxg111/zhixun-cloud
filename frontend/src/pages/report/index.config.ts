@@ -1,3 +1,3 @@
 export default definePageConfig({
-  navigationBarTitleText: '通关报告',
+  navigationBarTitleText: '学习报告',
 })

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { View, Text, Textarea, Image } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import {
@@ -8,6 +8,7 @@ import {
   getQuizHistory,
   waitForLogin,
   getEmployeeToken,
+  getUsableAvatarUrl,
   listEmployeeExams,
 } from '../../services/api'
 import type { UserBrief, QuizHistoryItem } from '../../services/api'
@@ -20,7 +21,9 @@ export default function IndexPage() {
   const [generateImages, setGenerateImages] = useState(false)
   const [user, setUser] = useState<UserBrief | null>(null)
   const [historyItems, setHistoryItems] = useState<QuizHistoryItem[]>([])
+  const [historyTotal, setHistoryTotal] = useState(0)
   const [employeePending, setEmployeePending] = useState<number | null>(null)
+  const didShowRef = useRef(false)
 
   const loadEmployeePending = useCallback(() => {
     if (!getEmployeeToken()) {
@@ -43,22 +46,23 @@ export default function IndexPage() {
     if (cached) setUser(cached)
 
     getQuizHistory(1, 4)
-      .then((res) => setHistoryItems(res.items))
+      .then((res) => {
+        setHistoryItems(res.items)
+        setHistoryTotal(res.total)
+      })
       .catch(() => {})
     loadEmployeePending()
   }, [loadEmployeePending])
 
   useEffect(() => { loadData() }, [loadData])
 
-  // 每次页面显示时刷新（从其他页面返回后）
+  // 每次页面显示时刷新（从其他页面返回后）。首次显示由 useEffect 负责，避免登录完成前抢先请求。
   useDidShow(() => {
-    const cached = getCachedUser()
-    if (cached) setUser(cached)
-    // 刷新闯关历史（从报告页返回或新完成闯关后）
-    getQuizHistory(1, 4)
-      .then((res) => setHistoryItems(res.items))
-      .catch(() => {})
-    loadEmployeePending()
+    if (!didShowRef.current) {
+      didShowRef.current = true
+      return
+    }
+    void loadData()
   })
 
   const handleGenerate = async () => {
@@ -98,23 +102,28 @@ export default function IndexPage() {
     }
   }
 
+  const avatarUrl = getUsableAvatarUrl(user?.avatar_url)
+
   return (
-    <View className='index-page'>
-      {/* 顶部工具栏 */}
+    <View className='index-page paper-bg'>
+      {/* 顶部账号栏 */}
       <View className='toolbar'>
         <View className='hello-user'>
-          {user?.avatar_url ? (
-            <Image className='hello-avatar-img' src={user.avatar_url} mode='aspectFill' />
+          {avatarUrl ? (
+            <Image className='hello-avatar-img' src={avatarUrl} mode='aspectFill' />
           ) : (
             <View className='hello-avatar'>
               <Text>{user?.nickname?.[0] || '智'}</Text>
             </View>
           )}
-          <Text className='hello-name'>你好，{user?.nickname || '同学'}</Text>
+          <View className='hello-body'>
+            <Text className='hello-name'>{user?.nickname || '同学'}</Text>
+            <Text className='hello-org'>企业学习中心</Text>
+          </View>
         </View>
         <View className='coin-badge'>
-          <Text className='coin-text'>{user?.total_xp ?? 0}</Text>
-          <Text className='coin-icon'>⭐</Text>
+          <Text className='coin-text num'>{user?.total_xp ?? 0}</Text>
+          <Text className='coin-unit'>XP</Text>
         </View>
       </View>
 
@@ -128,15 +137,20 @@ export default function IndexPage() {
           Taro.navigateTo({ url })
         }}
       >
-        <View className='enterprise-entry-left'>
-          <Text className='enterprise-entry-icon'>🏢</Text>
+        <View className='enterprise-entry-main'>
+          <View className='enterprise-entry-mark'>企</View>
           <View className='enterprise-entry-body'>
-            <Text className='enterprise-entry-title'>企业培训</Text>
+            <View className='enterprise-entry-title-row'>
+              <Text className='enterprise-entry-title'>企业培训</Text>
+              {employeePending !== null && employeePending > 0 && (
+                <Text className='enterprise-entry-badge'>{employeePending} 项待办</Text>
+              )}
+            </View>
             <Text className='enterprise-entry-desc'>
               {employeePending === null
                 ? '登录后查看待办考试与考前知识卡'
                 : employeePending > 0
-                  ? `${employeePending} 场待办考试，去完成培训`
+                  ? '有考试待完成，先读知识卡再进入考试'
                   : '暂无待办考试，可查看错题与知识卡'}
             </Text>
           </View>
@@ -145,13 +159,16 @@ export default function IndexPage() {
       </View>
 
       {/* 标题 */}
-      <Text className='page-title'>今天想闯哪一关？</Text>
+      <View className='home-heading'>
+        <Text className='page-title'>每日随问</Text>
+        <Text className='home-subtitle'>输入主题，生成 5 道闯关题</Text>
+      </View>
 
       {/* 输入区域 */}
       <View className='quick-input'>
         <View className='input-head'>
-          <View className='input-label'>输入你想学的内容</View>
-          <View className='mini-mascot'>智</View>
+          <Text className='input-label'>学习主题</Text>
+          <Text className='input-hint'>知识点 / 业务问题 / 文档主题</Text>
         </View>
         <Textarea
           className='input-area'
@@ -166,67 +183,65 @@ export default function IndexPage() {
           onClick={() => setGenerateImages((prev) => !prev)}
         >
           <View className='image-toggle-info'>
-            <Text className='image-toggle-icon'>🖼️</Text>
             <Text className='image-toggle-label'>为题目生成配图</Text>
+            <Text className='image-toggle-desc'>开启后生成时间会略有增加</Text>
           </View>
           <View className={`toggle-pill ${generateImages ? 'is-on' : ''}`}>
             <View className='toggle-knob' />
           </View>
         </View>
-        <View className='input-actions'>
-          <View
-            className={`btn-primary generate-btn ${loading ? 'is-loading' : ''}`}
-            onClick={!loading ? handleGenerate : undefined}
-          >
-            {loading ? (
-              <Text>{loadingText}</Text>
-            ) : (
-              <>
-                <Text className='btn-arrow'>→</Text>
-                <Text>开始生成题目</Text>
-              </>
-            )}
-          </View>
+        <View
+          className={`btn-primary generate-btn ${loading ? 'is-loading' : ''}`}
+          onClick={!loading ? handleGenerate : undefined}
+        >
+          {loading ? <Text>{loadingText}</Text> : <Text>生成题目</Text>}
         </View>
       </View>
 
-      {/* 已完成关卡 */}
-      {historyItems.length > 0 && (
-        <View className='cards-grid'>
-          {historyItems.map((item) => (
-            <View
-              key={item.quiz_id}
-              className='quiz-card'
-              onClick={() => {
-                Taro.navigateTo({
-                  url: `/pages/report/index?quizId=${item.quiz_id}`,
-                })
-              }}
-            >
-              <View className='quiz-dot'>✓</View>
-              <View className='quiz-body'>
-                <Text className='quiz-name'>{item.title}</Text>
-                <Text className='quiz-meta'>正确率：{Math.round(item.accuracy)}% · {item.question_count} 题</Text>
+      {/* 最近学习 */}
+      <View className='history-section'>
+        <View className='section-head'>
+          <Text className='section-title'>最近学习</Text>
+          <Text
+            className='section-more'
+            onClick={() => Taro.switchTab({ url: '/pages/profile/index' })}
+          >
+            全部记录
+          </Text>
+        </View>
+        {historyItems.length === 0 ? (
+          <View className='recent-empty'>
+            <Text>还没有学习记录，先在上面生成一组题目</Text>
+          </View>
+        ) : (
+          <View className='recent-grid'>
+            {historyItems.map((item) => (
+              <View
+                key={item.quiz_id}
+                className='recent'
+                onClick={() => {
+                  Taro.navigateTo({
+                    url: `/pages/report/index?quizId=${item.quiz_id}`,
+                  })
+                }}
+              >
+                <Text className='recent-title'>{item.title}</Text>
+                <Text className='recent-accuracy num'>{Math.round(item.accuracy)}%</Text>
               </View>
-            </View>
-          ))}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
+      </View>
 
-      {/* 学习小贴士 */}
-      <Text className='section-title'>💡 学习小贴士</Text>
-      <View className='tip-list'>
-        <View className='tip-item'>
-          <Text className='tip-icon'>🎯</Text>
-          <Text className='tip-text'>每天坚持闯关一次，知识积累看得见</Text>
+      {/* 学习概览 */}
+      <View className='mini-stats'>
+        <View className='mini-stat'>
+          <Text className='mini-stat-value num'>{historyTotal}</Text>
+          <Text className='mini-stat-label'>累计闯关</Text>
         </View>
-        <View className='tip-item'>
-          <Text className='tip-icon'>📝</Text>
-          <Text className='tip-text'>完成闯关后查看报告，重点复习薄弱知识点</Text>
-        </View>
-        <View className='tip-item'>
-          <Text className='tip-icon'>⭐</Text>
-          <Text className='tip-text'>答对越多，经验值涨得越快哦</Text>
+        <View className='mini-stat'>
+          <Text className='mini-stat-value num'>{user?.total_xp ?? 0}</Text>
+          <Text className='mini-stat-label'>经验值</Text>
         </View>
       </View>
     </View>

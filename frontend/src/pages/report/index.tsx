@@ -7,11 +7,11 @@ import './index.scss'
 
 /** Bug 14: 根据正确率返回不同的评价话术 */
 function getHeadingByAccuracy(acc: number): string {
-  if (acc >= 100) return '🎉 满分通关，太厉害了！'
-  if (acc >= 80) return '💪 表现优秀，继续保持！'
-  if (acc >= 60) return '👍 你这局学得很稳'
-  if (acc >= 40) return '📚 有进步空间，加油！'
-  return '🌱 别灰心，下次会更好！'
+  if (acc >= 100) return '满分通关，表现优秀'
+  if (acc >= 80) return '掌握良好，继续保持'
+  if (acc >= 60) return '学习效果稳定'
+  if (acc >= 40) return '仍有提升空间'
+  return '建议复习后再次挑战'
 }
 
 export default function ReportPage() {
@@ -119,13 +119,13 @@ export default function ReportPage() {
   }
 
   return (
-    <View className='report-page'>
+    <View className='report-page paper-bg'>
       {/* 顶部栏 */}
       <View className='report-toolbar'>
         <Text className='toolbar-title'>{quizData?.title || '闯关报告'}</Text>
         {xpGain !== null && (
           <View className='xp-badge'>
-            <Text className='xp-text'>+{xpGain} XP</Text>
+            <Text className='xp-text num'>+{xpGain} XP</Text>
           </View>
         )}
       </View>
@@ -137,10 +137,10 @@ export default function ReportPage() {
       {/* 标签 — Bug 16: 绿色表示掌握度，红色表示错题 */}
       <View className='tag-row'>
         <View className='tag tag-green'>
-          <Text>✅ 答对 {answerRecords.filter((r) => r.is_correct).length} 题</Text>
+          <Text>答对 {answerRecords.filter((r) => r.is_correct).length} 题</Text>
         </View>
         <View className='tag tag-red'>
-          <Text>❌ 答错 {answerRecords.filter((r) => !r.is_correct).length} 题</Text>
+          <Text>答错 {answerRecords.filter((r) => !r.is_correct).length} 题</Text>
         </View>
       </View>
 
@@ -152,13 +152,13 @@ export default function ReportPage() {
         <>
           {/* 掌握度卡片 */}
           <View className='note-card'>
-            <Text className='card-title'>🕐 掌握度</Text>
+            <Text className='card-title'>掌握度</Text>
             <View className='mastery-row'>
               <View className='mastery-ring'>
                 <View
                   className='ring-outer-large'
                   style={{
-                    background: `conic-gradient(#ff7a2f 0 ${accuracy}%, #ece7de ${accuracy}% 100%)`,
+                    background: `conic-gradient(#1f4a38 0 ${accuracy}%, #d6d8ca ${accuracy}% 100%)`,
                   }}
                 >
                   <View className='ring-inner-large'>
@@ -181,7 +181,7 @@ export default function ReportPage() {
           {/* 薄弱知识点 */}
           {report?.weak_points && report.weak_points.length > 0 && (
             <View className='note-card'>
-              <Text className='card-title'>⚠ 最该补的 {report.weak_points.length} 点</Text>
+              <Text className='card-title'>重点补齐 {report.weak_points.length} 点</Text>
               <View className='weak-list'>
                 {report.weak_points.map((point, i) => (
                   <Text key={i} className='weak-item'>
@@ -195,7 +195,7 @@ export default function ReportPage() {
           {/* 知识总结 */}
           {report?.three_line_summary && (
             <View className='note-card'>
-              <Text className='card-title'>📝 知识总结</Text>
+              <Text className='card-title'>知识总结</Text>
               <View className='summary-list'>
                 {report.three_line_summary.map((line, i) => (
                   <Text key={i} className='summary-item'>
@@ -209,7 +209,7 @@ export default function ReportPage() {
           {/* 建议 */}
           {report?.advice && report.advice.length > 0 && (
             <View className='note-card'>
-              <Text className='card-title'>💡 建议</Text>
+              <Text className='card-title'>学习建议</Text>
               <View className='advice-list'>
                 {report.advice.map((item, i) => (
                   <Text key={i} className='advice-item'>
@@ -222,7 +222,7 @@ export default function ReportPage() {
 
           {/* 分享海报 */}
           <View className='sticker-card'>
-            <Text className='card-title'>🔗 分享海报</Text>
+            <Text className='card-title'>分享海报</Text>
             <View className='poster-preview'>
               <Text className='poster-quote'>
                 {report?.share_quote || '今天我又闯过一个知识关卡！'}
@@ -234,7 +234,7 @@ export default function ReportPage() {
           {/* 题目回顾（含 AI 配图，历史回看时也可查看） */}
           {quizData?.questions && quizData.questions.length > 0 && (
             <View className='note-card'>
-              <Text className='card-title'>📖 题目回顾</Text>
+              <Text className='card-title'>题目回顾</Text>
               <View className='review-list'>
                 {quizData.questions.map((q, i) => {
                   const record = answerRecords.find((r) => r.question_id === q.id)

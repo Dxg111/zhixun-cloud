@@ -25,7 +25,7 @@ export default function EmployeeResultPage() {
 
   if (loading) {
     return (
-      <View className='employee-result-page'>
+      <View className='employee-result-page paper-bg'>
         <View className='employee-result-empty'><Text>正在加载成绩...</Text></View>
       </View>
     )
@@ -33,19 +33,26 @@ export default function EmployeeResultPage() {
 
   if (!result) {
     return (
-      <View className='employee-result-page'>
+      <View className='employee-result-page paper-bg'>
         <View className='employee-result-empty'><Text>暂无成绩</Text></View>
       </View>
     )
   }
 
   return (
-    <View className='employee-result-page'>
+    <View className='employee-result-page paper-bg'>
       <View className={`employee-result-hero ${result.passed ? 'is-pass' : 'is-fail'}`}>
-        <Text className='employee-result-score'>{result.score}</Text>
+        <Text className='employee-result-kicker'>考试成绩</Text>
+        <View className='employee-result-score-row'>
+          <Text className='employee-result-score num'>{result.score}</Text>
+          <Text className='employee-result-score-unit'>分</Text>
+        </View>
         <Text className='employee-result-label'>本场得分</Text>
-        <Text className='employee-result-status'>
-          {result.passed ? '恭喜通过' : '未通过，继续加油'}
+        <Text className={`employee-result-status ${result.passed ? 'is-pass' : 'is-fail'}`}>
+          {result.passed ? '已通过' : '未通过'}
+        </Text>
+        <Text className='employee-result-hint'>
+          {result.passed ? '成绩已记录，可继续完成错题重练巩固知识。' : '建议先阅读知识卡，再完成错题重练后重考。'}
         </Text>
       </View>
 

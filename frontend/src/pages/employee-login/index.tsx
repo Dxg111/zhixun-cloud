@@ -41,9 +41,17 @@ export default function EmployeeLoginPage() {
   }
 
   return (
-    <View className='employee-login-page'>
+    <View className='employee-login-page paper-bg'>
+      <View className='employee-login-brand'>
+        <View className='employee-login-brand-mark'>智</View>
+        <View className='employee-login-brand-body'>
+          <Text className='employee-login-brand-name'>智训云</Text>
+          <Text className='employee-login-brand-sub'>企业培训考核平台</Text>
+        </View>
+      </View>
+
       <View className='employee-login-card'>
-        <View className='employee-login-mark'>🏢</View>
+        <Text className='employee-login-kicker'>员工入口</Text>
         <Text className='employee-login-title'>企业培训考试</Text>
         <Text className='employee-login-desc'>
           输入企业管理员提供的租户编码和邀请码，进入我的考试。
@@ -78,6 +86,10 @@ export default function EmployeeLoginPage() {
         >
           {loading ? '登录中...' : '进入我的考试'}
         </Button>
+
+        <Text className='employee-login-tip'>
+          邀请码由企业培训管理员统一发放，如未收到请联系所在部门负责人。
+        </Text>
 
         <View
           className='employee-back-home'

@@ -1,55 +1,98 @@
+/* 考试成绩页 */
+
 .employee-result-page {
   min-height: 100vh;
-  padding: 32px 32px 80px;
+  padding: 28px 32px 80px;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #fcfaf6 0%, #f5f1ea 100%);
 }
 
 .employee-result-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px 24px;
-  border-radius: 40px;
-  border: 2px solid #f0e2d6;
-  background: #fffdfb;
+  padding: 36px 28px 32px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  border-top: 6px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 
   &.is-pass {
-    background: linear-gradient(180deg, #f2fbf6 0%, #fffdfb 100%);
+    border-top-color: var(--green);
   }
 
   &.is-fail {
-    background: linear-gradient(180deg, #fff2ef 0%, #fffdfb 100%);
+    border-top-color: var(--red);
   }
+}
+
+.employee-result-kicker {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--faint);
+}
+
+.employee-result-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .employee-result-score {
   font-size: 96px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
-  color: #cb6227;
+  color: var(--text-strong);
+}
+
+.employee-result-score-unit {
+  font-size: 24px;
+  color: var(--muted);
 }
 
 .employee-result-label {
-  margin-top: 12px;
-  font-size: 24px;
-  color: #80909e;
+  margin-top: 8px;
+  font-size: 22px;
+  color: var(--faint);
 }
 
 .employee-result-status {
-  margin-top: 18px;
-  font-size: 32px;
-  font-weight: 800;
-  color: #1f2d37;
+  margin-top: 16px;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 22px;
+  font-weight: 600;
+
+  &.is-pass {
+    color: var(--green);
+    background: var(--green-soft);
+  }
+
+  &.is-fail {
+    color: var(--red);
+    background: var(--red-soft);
+  }
+}
+
+.employee-result-hint {
+  margin-top: 16px;
+  max-width: 520px;
+  text-align: center;
+  font-size: 22px;
+  line-height: 1.6;
+  color: var(--muted);
 }
 
 .employee-result-summary {
   display: flex;
-  margin-top: 24px;
-  padding: 28px 16px;
-  border-radius: 32px;
-  background: #fff;
-  border: 2px solid #ede4da;
+  margin-top: 16px;
+  padding: 26px 8px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow-card);
 }
 
 .employee-result-stat {
@@ -57,38 +100,45 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 6px;
+  border-right: 2px solid var(--line);
+
+  &:last-child {
+    border-right: none;
+  }
 }
 
 .employee-result-stat-value {
-  font-size: 40px;
-  font-weight: 800;
-  color: #ff7a2f;
+  font-size: 38px;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
 }
 
 .employee-result-stat-label {
-  margin-top: 8px;
-  font-size: 24px;
-  color: #80909e;
+  font-size: 22px;
+  color: var(--muted);
 }
 
 .employee-result-section-title {
   display: block;
-  margin: 36px 0 20px;
-  font-size: 34px;
-  font-weight: 800;
+  margin: 34px 0 18px;
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-strong);
 }
 
 .employee-result-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .employee-result-item {
-  padding: 28px;
-  border-radius: 32px;
-  border: 2px solid #ede4da;
-  background: #fff;
+  padding: 26px 28px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  background: var(--surface);
 }
 
 .employee-result-question-head {
@@ -98,71 +148,82 @@
 }
 
 .employee-result-question-index {
-  font-size: 24px;
-  color: #80909e;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--faint);
 }
 
 .employee-result-correct {
-  font-size: 24px;
-  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 20px;
+  font-weight: 500;
 
-  &.is-pass { color: #29986d; }
-  &.is-fail { color: #c0453a; }
+  &.is-pass {
+    color: var(--green);
+    background: var(--green-soft);
+  }
+
+  &.is-fail {
+    color: var(--red);
+    background: var(--red-soft);
+  }
 }
 
 .employee-result-stem {
   display: block;
-  margin-top: 12px;
-  font-size: 30px;
-  font-weight: 700;
+  margin-top: 14px;
+  font-size: 28px;
+  font-weight: 600;
   line-height: 1.6;
-  color: #2b3340;
+  color: var(--text);
 }
 
 .employee-result-answer {
   display: block;
-  margin-top: 12px;
-  font-size: 26px;
-  color: #5a6a78;
+  margin-top: 10px;
+  font-size: 24px;
+  color: var(--muted);
 }
 
 .employee-result-explanation {
   display: block;
   margin-top: 16px;
-  padding: 20px;
-  border-radius: 24px;
-  background: #fff7ef;
-  border: 2px solid #f0d9c6;
-  font-size: 26px;
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  border-left: 6px solid var(--primary-line);
+  font-size: 24px;
   line-height: 1.7;
-  color: #5b4331;
+  color: var(--muted);
 }
 
 .employee-result-secondary {
   height: 84px;
-  margin-top: 32px;
-  border-radius: 999px;
+  margin-top: 30px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #f0d9c6;
-  background: #fff7ef;
-  color: #cb6227;
-  font-size: 28px;
-  font-weight: 800;
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 27px;
+  font-weight: 600;
 }
 
 .employee-result-action {
-  height: 92px;
-  margin-top: 20px;
-  border-radius: 999px;
+  height: 88px;
+  margin-top: 14px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #ff944f, #ff6f27);
-  color: #fff;
-  font-size: 30px;
-  font-weight: 800;
+  background: var(--primary);
+  color: var(--surface);
+  font-size: 28px;
+  font-weight: 600;
 }
 
 .employee-result-empty {
@@ -170,6 +231,6 @@
   align-items: center;
   justify-content: center;
   padding-top: 240px;
-  color: #80909e;
-  font-size: 28px;
+  color: var(--faint);
+  font-size: 26px;
 }

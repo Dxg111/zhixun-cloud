@@ -6,7 +6,7 @@ export default {
     stats: true,
   },
   defineConstants: {
-    API_BASE_URL: '"http://localhost:8000/api/v1"',
+    API_BASE_URL: '"http://192.168.0.100:8000/api/v1"',
   },
   mini: {},
   h5: {},

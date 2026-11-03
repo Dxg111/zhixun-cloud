@@ -68,34 +68,62 @@ export default function EmployeeExamsPage() {
     Taro.redirectTo({ url: '/pages/employee-login/index' })
   }
 
+  const pendingCount = exams.filter(
+    (exam) => exam.status !== 'closed' && exam.attempt_status !== 'submitted',
+  ).length
+  const completedCount = exams.filter((exam) => exam.attempt_status === 'submitted').length
+
   return (
-    <View className='employee-exams-page'>
+    <View className='employee-exams-page paper-bg'>
       <View className='employee-exams-header'>
-        <View>
-          <Text className='employee-hello'>你好，{employee?.name || '同学'}</Text>
-          <Text className='employee-org'>{employee?.org_path || '企业培训'}</Text>
+        <View className='employee-header-top'>
+          <View className='employee-header-identity'>
+            <Text className='employee-hello'>{employee?.name || '同学'}</Text>
+            <Text className='employee-org'>{employee?.org_path || '企业培训中心'}</Text>
+          </View>
+          <View className='employee-header-actions'>
+            <View
+              className='employee-header-link'
+              onClick={() => Taro.navigateTo({ url: '/pages/employee-wrong/index' })}
+            >
+              <Text>错题重练</Text>
+            </View>
+            <Text className='employee-logout' onClick={handleLogout}>退出</Text>
+          </View>
         </View>
-        <View className='employee-header-actions'>
-          <Text
-            className='employee-header-link'
-            onClick={() => Taro.navigateTo({ url: '/pages/employee-wrong/index' })}
-          >
-            错题重练
-          </Text>
-          <Text className='employee-logout' onClick={handleLogout}>退出</Text>
+
+        <View className='employee-summary'>
+          <View className='employee-summary-item'>
+            <Text className='employee-summary-num num'>{pendingCount}</Text>
+            <Text className='employee-summary-label'>待完成</Text>
+          </View>
+          <View className='employee-summary-divider' />
+          <View className='employee-summary-item'>
+            <Text className='employee-summary-num num'>{completedCount}</Text>
+            <Text className='employee-summary-label'>已完成</Text>
+          </View>
+          <View className='employee-summary-divider' />
+          <View className='employee-summary-item'>
+            <Text className='employee-summary-num num'>{exams.length}</Text>
+            <Text className='employee-summary-label'>全部考试</Text>
+          </View>
         </View>
       </View>
 
-      <Text className='employee-section-title'>我的考试</Text>
-
-      {loading && exams.length === 0 ? (
-        <View className='employee-empty'><Text>加载中...</Text></View>
-      ) : exams.length === 0 ? (
-        <View className='employee-empty'>
-          <Text className='employee-empty-icon'>📭</Text>
-          <Text>暂无待办考试</Text>
+      <View className='employee-exams-body'>
+        <View className='employee-section-head'>
+          <Text className='employee-section-title'>我的考试</Text>
+          <Text className='employee-section-note'>按截止时间优先完成</Text>
         </View>
-      ) : (
+
+        {loading && exams.length === 0 ? (
+          <View className='employee-empty'><Text>加载中...</Text></View>
+        ) : exams.length === 0 ? (
+          <View className='employee-empty'>
+            <View className='employee-empty-mark'>—</View>
+            <Text>暂无待办考试</Text>
+          </View>
+        ) : (
         <View className='employee-exam-list'>
           {exams.map((exam) => {
             const submitted = exam.attempt_status === 'submitted'
@@ -109,23 +137,42 @@ export default function EmployeeExamsPage() {
                   ? '已结束'
                   : '开始考试'
             return (
-              <View key={exam.id} className='employee-exam-card'>
+              <View
+                key={exam.id}
+                className={`employee-exam-card ${
+                  submitted ? 'is-done' : inProgress ? 'is-progress' : ''
+                }`}
+              >
                 <View className='employee-exam-top'>
                   <Text className='employee-exam-title'>{exam.title}</Text>
-                  <Text className={`employee-exam-status ${closed ? 'is-closed' : ''}`}>
+                  <Text
+                    className={`employee-exam-status ${
+                      closed ? 'is-closed' : submitted ? 'is-done' : inProgress ? 'is-progress' : ''
+                    }`}
+                  >
                     {closed ? '已结束' : submitted ? '已完成' : inProgress ? '进行中' : '待完成'}
                   </Text>
                 </View>
-                <Text className='employee-exam-meta'>
-                  {exam.question_count} 题 · {exam.duration_minutes} 分钟 · 及格 {exam.pass_score} 分
-                </Text>
+                <View className='employee-exam-meta-row'>
+                  <Text className='employee-exam-meta'>{exam.question_count} 题</Text>
+                  <Text className='employee-exam-meta'>{exam.duration_minutes} 分钟</Text>
+                  <Text className='employee-exam-meta'>及格 {exam.pass_score} 分</Text>
+                </View>
                 {exam.end_at && (
-                  <Text className='employee-exam-meta'>截止：{exam.end_at}</Text>
+                  <View className='employee-exam-deadline'>
+                    <Text>截止时间：{exam.end_at}</Text>
+                  </View>
                 )}
                 {submitted && exam.score != null && (
-                  <Text className={`employee-exam-score ${exam.passed ? 'is-pass' : 'is-fail'}`}>
-                    得分 {exam.score} · {exam.passed ? '已通过' : '未通过'}
-                  </Text>
+                  <View className='employee-exam-score-row'>
+                    <Text className='employee-exam-score-num num'>{exam.score}</Text>
+                    <Text className='employee-exam-score-unit'>分</Text>
+                    <Text
+                      className={`employee-exam-pass ${exam.passed ? 'is-pass' : 'is-fail'}`}
+                    >
+                      {exam.passed ? '已通过' : '未通过'}
+                    </Text>
+                  </View>
                 )}
                 <View className='employee-exam-secondary-actions'>
                   <View className='employee-exam-secondary' onClick={() => openCards(exam)}>
@@ -159,7 +206,8 @@ export default function EmployeeExamsPage() {
             )
           })}
         </View>
-      )}
+        )}
+      </View>
     </View>
   )
 }

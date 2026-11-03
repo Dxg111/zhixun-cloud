@@ -111,8 +111,9 @@ export default function EmployeeWrongPage() {
   }
 
   return (
-    <View className='employee-wrong-page'>
+    <View className='employee-wrong-page paper-bg'>
       <View className='employee-wrong-hero'>
+        <Text className='employee-wrong-kicker'>知识巩固</Text>
         <Text className='employee-wrong-title'>错题重练</Text>
         <Text className='employee-wrong-desc'>
           连续答对 2 次自动标记掌握；重练不会修改原考试成绩。
@@ -138,7 +139,7 @@ export default function EmployeeWrongPage() {
         <View className='employee-wrong-empty'><Text>加载中...</Text></View>
       ) : items.length === 0 ? (
         <View className='employee-wrong-empty'>
-          <Text className='employee-wrong-empty-icon'>🎉</Text>
+          <View className='employee-wrong-empty-mark'>✓</View>
           <Text>{onlyTodo ? '暂无待掌握错题' : '暂无错题'}</Text>
         </View>
       ) : (
