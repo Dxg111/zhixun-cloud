@@ -3,6 +3,7 @@ import {
   App as AntApp,
   Button,
   Card,
+  Input,
   Popconfirm,
   Space,
   Table,
@@ -10,8 +11,8 @@ import {
   Upload,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import StatusTag from '../components/StatusTag'
 import {
@@ -31,8 +32,11 @@ function formatSize(bytes: number) {
 export default function KnowledgePage() {
   const { message } = AntApp.useApp()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const keywordFromUrl = searchParams.get('keyword') || ''
   const [docs, setDocs] = useState<AdminDocument[]>([])
   const [loading, setLoading] = useState(false)
+  const [keyword, setKeyword] = useState('')
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -55,8 +59,18 @@ export default function KnowledgePage() {
   }, [handleError])
 
   useEffect(() => {
+    if (keywordFromUrl) setKeyword(keywordFromUrl)
+  }, [keywordFromUrl])
+
+  useEffect(() => {
     void loadDocs()
   }, [loadDocs])
+
+  const filteredDocs = useMemo(() => {
+    const normalized = keyword.trim().toLowerCase()
+    if (!normalized) return docs
+    return docs.filter((doc) => doc.file_name.toLowerCase().includes(normalized))
+  }, [docs, keyword])
 
   const handleDelete = async (doc: AdminDocument) => {
     try {
@@ -134,14 +148,24 @@ export default function KnowledgePage() {
         title="知识库"
         description="上传培训资料后，系统会自动解析、分块并统计知识片段。题目和知识卡都从这里生成。"
         extra={
-          <Button
-            onClick={() => {
-              const failed = docs.find((doc) => doc.status === 'failed')
-              message.info(failed?.error_message || '暂无失败文档')
-            }}
-          >
-            查看失败原因
-          </Button>
+          <Space>
+            <Input.Search
+              allowClear
+              key={keyword}
+              defaultValue={keyword}
+              placeholder="搜索文档名称"
+              style={{ width: 220 }}
+              onSearch={(value) => setKeyword(value.trim())}
+            />
+            <Button
+              onClick={() => {
+                const failed = docs.find((doc) => doc.status === 'failed')
+                message.info(failed?.error_message || '暂无失败文档')
+              }}
+            >
+              查看失败原因
+            </Button>
+          </Space>
         }
       />
 
@@ -184,7 +208,7 @@ export default function KnowledgePage() {
         <Table
           rowKey="id"
           columns={columns}
-          dataSource={docs}
+          dataSource={filteredDocs}
           loading={loading}
           pagination={false}
           scroll={{ x: 900 }}

@@ -18,7 +18,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import type { DataNode } from 'antd/es/tree'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import AddEmployeeModal from '../components/AddEmployeeModal'
 import ImportEmployeesModal from '../components/ImportEmployeesModal'
 import PageHeader from '../components/PageHeader'
@@ -70,11 +70,15 @@ function buildTree(orgs: OrgUnitItem[]): OrgTreeNode[] {
 export default function OrgPage() {
   const { message } = AntApp.useApp()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const keywordFromUrl = searchParams.get('keyword') || ''
+  const employeeNoFromUrl = searchParams.get('employee_no') || ''
   const [orgs, setOrgs] = useState<OrgUnitItem[]>([])
   const [employees, setEmployees] = useState<EmployeeItem[]>([])
   const [total, setTotal] = useState(0)
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null)
   const [keyword, setKeyword] = useState('')
+  const [highlightEmployeeNo, setHighlightEmployeeNo] = useState('')
   const [loading, setLoading] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -131,6 +135,39 @@ export default function OrgPage() {
       setLoading(false)
     }
   }, [selectedOrgId, keyword, handleError])
+
+  useEffect(() => {
+    if (keywordFromUrl) setKeyword(keywordFromUrl)
+  }, [keywordFromUrl])
+
+  useEffect(() => {
+    if (!employeeNoFromUrl) return
+    setKeyword('')
+    setSelectedOrgId(null)
+    setHighlightEmployeeNo(employeeNoFromUrl)
+    // 只用于定位，清理 URL，刷新后回到完整员工列表
+    setSearchParams({}, { replace: true })
+  }, [employeeNoFromUrl, setSearchParams])
+
+  useEffect(() => {
+    if (!highlightEmployeeNo || employees.length === 0) return
+    const target = employees.find((employee) => employee.employee_no === highlightEmployeeNo)
+    if (!target) {
+      setHighlightEmployeeNo('')
+      return
+    }
+    const scrollTimer = window.setTimeout(() => {
+      document
+        .querySelector(`tr[data-row-key="${target.id}"]`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 80)
+    // 定位只做短暂提示，3 秒后自动清除，不需要手动操作
+    const clearTimer = window.setTimeout(() => setHighlightEmployeeNo(''), 3000)
+    return () => {
+      window.clearTimeout(scrollTimer)
+      window.clearTimeout(clearTimer)
+    }
+  }, [employees, highlightEmployeeNo])
 
   useEffect(() => {
     void loadOrgs()
@@ -244,6 +281,7 @@ export default function OrgPage() {
               onSelect={(keys) => {
                 const key = keys[0]
                 setSelectedOrgId(key === 'all' || key === undefined ? null : Number(key))
+                setHighlightEmployeeNo('')
               }}
             />
           </Card>
@@ -256,9 +294,14 @@ export default function OrgPage() {
             extra={
               <Input.Search
                 allowClear
+                key={keyword}
+                defaultValue={keyword}
                 placeholder="搜索姓名或工号"
                 style={{ width: 220 }}
-                onSearch={(value) => setKeyword(value.trim())}
+                onSearch={(value) => {
+                  setKeyword(value.trim())
+                  setHighlightEmployeeNo('')
+                }}
                 onChange={(event) => {
                   if (!event.target.value) setKeyword('')
                 }}
@@ -272,6 +315,9 @@ export default function OrgPage() {
               loading={loading}
               pagination={false}
               scroll={{ x: 1000 }}
+              rowClassName={(employee) =>
+                employee.employee_no === highlightEmployeeNo ? 'employee-row-highlight' : ''
+              }
             />
           </Card>
         </Col>

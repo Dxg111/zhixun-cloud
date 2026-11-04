@@ -1,7 +1,7 @@
 import { App as AntApp, Button, Card, Input, Segmented, Select, Space, Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useState, type Key } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import GenerateQuestionsModal from '../components/GenerateQuestionsModal'
 import QuestionDrawer from '../components/QuestionDrawer'
@@ -59,6 +59,8 @@ function toDrawerQuestion(item: ApiQuestion): Question {
 export default function QuestionsPage() {
   const { message } = AntApp.useApp()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const keywordFromUrl = searchParams.get('keyword') || ''
   const [questions, setQuestions] = useState<ApiQuestion[]>([])
   const [counts, setCounts] = useState<QuestionCounts>({
     all: 0,
@@ -106,6 +108,10 @@ export default function QuestionsPage() {
       setLoading(false)
     }
   }, [filter, keyword, bankId, page, handleError])
+
+  useEffect(() => {
+    if (keywordFromUrl) setKeyword(keywordFromUrl)
+  }, [keywordFromUrl])
 
   useEffect(() => {
     void fetchQuestions()
@@ -265,6 +271,8 @@ export default function QuestionsPage() {
           </Space>
           <Input.Search
             allowClear
+            key={keyword}
+            defaultValue={keyword}
             placeholder="搜索题干或知识点"
             style={{ width: 240 }}
             onSearch={(value) => {

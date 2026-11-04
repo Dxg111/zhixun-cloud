@@ -267,6 +267,31 @@ export interface TenantSettings {
   updated_at: string
 }
 
+export interface GlobalSearchItem {
+  type: 'employee' | 'question' | 'exam' | 'card' | 'document'
+  id: number
+  title: string
+  subtitle: string
+  status: string
+  url: string
+}
+
+export interface GlobalSearchResult {
+  keyword: string
+  total: number
+  items: GlobalSearchItem[]
+}
+
+export interface DashboardTrendPoint {
+  exam_id: number
+  label: string
+  title: string
+  assigned: number
+  completed: number
+  completion_rate: number
+  pass_rate: number
+}
+
 export interface DashboardData {
   pending_questions: number
   pending_cards: number
@@ -274,6 +299,7 @@ export interface DashboardData {
   active_exams: number
   completion_rate: number
   recent_exams: AdminExam[]
+  trend: DashboardTrendPoint[]
   weak_points: Array<{ name?: string; value?: number }>
 }
 
@@ -568,6 +594,13 @@ export function listOrgUnits() {
 
 export function createOrgUnit(payload: { name: string; parent_id?: number | null }) {
   return request<OrgUnitItem>('/admin/org-units', { method: 'POST', body: payload })
+}
+
+export function globalSearch(keyword: string, limit = 5) {
+  const query = new URLSearchParams()
+  query.set('keyword', keyword)
+  query.set('limit', String(limit))
+  return request<GlobalSearchResult>(`/admin/search?${query.toString()}`)
 }
 
 export function listEmployees(params: {

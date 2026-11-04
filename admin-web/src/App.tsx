@@ -10,6 +10,7 @@ import QuestionsPage from './pages/QuestionsPage'
 import CardsPage from './pages/CardsPage'
 import ExamsPage from './pages/ExamsPage'
 import ExportsPage from './pages/ExportsPage'
+import SearchPage from './pages/SearchPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
 
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/org" element={<OrgPage />} />
         <Route path="/join-requests" element={<JoinRequestsPage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/questions" element={<QuestionsPage />} />
         <Route path="/cards" element={<CardsPage />} />

@@ -17,6 +17,7 @@ from app.api.v1.routes import (
     admin_knowledge_cards,
     admin_org,
     admin_questions,
+    admin_search,
     admin_settings,
     auth,
     employee,
@@ -83,6 +84,7 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(admin_accounts.router, prefix="/api/v1")
 app.include_router(admin_questions.router, prefix="/api/v1")
+app.include_router(admin_search.router, prefix="/api/v1")
 app.include_router(admin_knowledge_cards.router, prefix="/api/v1")
 app.include_router(admin_org.router, prefix="/api/v1")
 app.include_router(admin_documents.router, prefix="/api/v1")

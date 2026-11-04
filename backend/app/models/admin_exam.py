@@ -81,6 +81,16 @@ class ExportTaskListResponse(BaseModel):
     total: int
 
 
+class DashboardTrendPoint(BaseModel):
+    exam_id: int
+    label: str
+    title: str
+    assigned: int
+    completed: int
+    completion_rate: int
+    pass_rate: int
+
+
 class DashboardResponse(BaseModel):
     pending_questions: int
     pending_cards: int
@@ -88,4 +98,5 @@ class DashboardResponse(BaseModel):
     active_exams: int
     completion_rate: int
     recent_exams: list[ExamItem]
+    trend: list[DashboardTrendPoint] = []
     weak_points: list[dict] = []

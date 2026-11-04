@@ -1,7 +1,7 @@
 import { App as AntApp, Button, Card, Input, Segmented, Space, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import AssignExamModal from '../components/AssignExamModal'
 import CreateExamModal from '../components/CreateExamModal'
 import ExamCardsModal from '../components/ExamCardsModal'
@@ -44,6 +44,8 @@ function toDrawerExam(detail: AdminExamDetail): Exam {
 export default function ExamsPage() {
   const { message } = AntApp.useApp()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const keywordFromUrl = searchParams.get('keyword') || ''
   const [exams, setExams] = useState<AdminExam[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({ all: 0, published: 0, closed: 0, draft: 0 })
   const [total, setTotal] = useState(0)
@@ -83,6 +85,10 @@ export default function ExamsPage() {
       setLoading(false)
     }
   }, [filter, keyword, page, handleError])
+
+  useEffect(() => {
+    if (keywordFromUrl) setKeyword(keywordFromUrl)
+  }, [keywordFromUrl])
 
   useEffect(() => {
     void loadExams()
@@ -235,6 +241,8 @@ export default function ExamsPage() {
           />
           <Input.Search
             allowClear
+            key={keyword}
+            defaultValue={keyword}
             placeholder="搜索考试名称"
             style={{ width: 240 }}
             onSearch={(value) => {

@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import MetricCard from '../components/MetricCard'
 import PageHeader from '../components/PageHeader'
 import StatusTag from '../components/StatusTag'
-import { getDashboard, getToken, type AdminExam, type DashboardData } from '../services/api'
+import { getDashboard, getToken, type AdminExam, type DashboardData, type DashboardTrendPoint } from '../services/api'
 
 const EMPTY_DASHBOARD: DashboardData = {
   pending_questions: 0,
@@ -21,6 +21,7 @@ const EMPTY_DASHBOARD: DashboardData = {
   active_exams: 0,
   completion_rate: 0,
   recent_exams: [],
+  trend: [],
   weak_points: [],
 }
 
@@ -59,6 +60,49 @@ function progressColor(value: number) {
   if (value < 60) return '#a33a3a'
   if (value < 75) return '#a96617'
   return '#0d6a4d'
+}
+
+const TREND_LEFT = 60
+const TREND_RIGHT = 600
+const TREND_TOP = 40
+const TREND_BOTTOM = 220
+
+function trendX(index: number, count: number) {
+  if (count <= 1) return (TREND_LEFT + TREND_RIGHT) / 2
+  return TREND_LEFT + (index * (TREND_RIGHT - TREND_LEFT)) / (count - 1)
+}
+
+function trendY(value: number) {
+  const clamped = Math.max(0, Math.min(100, value))
+  return TREND_BOTTOM - (clamped / 100) * (TREND_BOTTOM - TREND_TOP)
+}
+
+function trendCoords(
+  points: DashboardTrendPoint[],
+  key: 'completion_rate' | 'pass_rate',
+) {
+  return points.map((point, index) => [
+    trendX(index, points.length),
+    trendY(point[key]),
+  ] as const)
+}
+
+function trendPolyline(
+  points: DashboardTrendPoint[],
+  key: 'completion_rate' | 'pass_rate',
+) {
+  return trendCoords(points, key)
+    .map(([x, y]) => `${x},${y}`)
+    .join(' ')
+}
+
+function trendArea(points: DashboardTrendPoint[], key: 'completion_rate' | 'pass_rate') {
+  const coords = trendCoords(points, key)
+  if (coords.length === 0) return ''
+  const [first, ...rest] = coords
+  const last = coords[coords.length - 1]
+  const line = rest.map(([x, y]) => `L${x} ${y}`).join(' ')
+  return `M${first[0]} ${first[1]} ${line} L${last[0]} ${TREND_BOTTOM} L${first[0]} ${TREND_BOTTOM} Z`
 }
 
 export default function DashboardPage() {
@@ -140,66 +184,106 @@ export default function DashboardPage() {
 
       <Row gutter={[14, 14]} style={{ marginTop: 14 }}>
         <Col xs={24} xl={16}>
-          <Card title="近 6 场考试趋势" extra={<Tag color="success">演示数据</Tag>} className="panel-card">
+          <Card
+            title="近 6 场考试趋势"
+            extra={<Tag color="success">真实数据</Tag>}
+            className="panel-card"
+          >
             <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
-              完成率与通过率，按考试结束时间统计
+              完成率与通过率，按最近 {dashboard.trend.length} 场已发布考试统计
             </Typography.Paragraph>
-            <svg className="trend-chart" viewBox="0 0 640 240" role="img" aria-label="考试趋势图">
-              {[40, 85, 130, 175, 220].map((y) => (
-                <line key={y} x1="52" y1={y} x2="604" y2={y} stroke="var(--admin-line)" strokeWidth="1" />
-              ))}
-              {[100, 75, 50, 25, 0].map((label, index) => (
-                <text key={label} x="8" y={44 + index * 45} className="chart-label">
-                  {label}
-                </text>
-              ))}
-              <path
-                d="M60 108.4 L160 97.6 L260 86.8 L360 92.2 L460 77.8 L560 65.2 L560 220 L60 220 Z"
-                fill="var(--admin-accent-soft)"
-              />
-              <polyline
-                points="60,108.4 160,97.6 260,86.8 360,92.2 460,77.8 560,65.2"
-                fill="none"
-                stroke="var(--admin-accent)"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <polyline
-                points="60,121 160,110.2 260,101.2 360,104.8 460,94 560,85"
-                fill="none"
-                stroke="var(--admin-amber)"
-                strokeWidth="2"
-                strokeDasharray="5 5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {[
-                [60, 108.4],
-                [160, 97.6],
-                [260, 86.8],
-                [360, 92.2],
-                [460, 77.8],
-                [560, 65.2],
-              ].map(([x, y]) => (
-                <circle key={`${x}-${y}`} cx={x} cy={y} r="3" fill="var(--admin-accent)" />
-              ))}
-              {['09/20', '10/05', '10/12', '10/19', '10/26', '11/02'].map((label, index) => (
-                <text key={label} x={44 + index * 100} y="238" className="chart-label">
-                  {label}
-                </text>
-              ))}
-            </svg>
-            <Space size={18} style={{ marginTop: 8 }}>
-              <Space size={6}>
-                <span className="legend-dot" style={{ background: 'var(--admin-accent)' }} />
-                完成率
-              </Space>
-              <Space size={6}>
-                <span className="legend-dot" style={{ background: 'var(--admin-amber)' }} />
-                通过率
-              </Space>
-            </Space>
+            {dashboard.trend.length ? (
+              <>
+                <svg className="trend-chart" viewBox="0 0 640 240" role="img" aria-label="考试趋势图">
+                  {[100, 75, 50, 25, 0].map((value) => (
+                    <line
+                      key={`grid-${value}`}
+                      x1="52"
+                      y1={trendY(value)}
+                      x2="604"
+                      y2={trendY(value)}
+                      stroke="var(--admin-line)"
+                      strokeWidth="1"
+                    />
+                  ))}
+                  {[100, 75, 50, 25, 0].map((value) => (
+                    <text key={`y-${value}`} x="8" y={trendY(value) + 4} className="chart-label">
+                      {value}
+                    </text>
+                  ))}
+                  <path
+                    d={trendArea(dashboard.trend, 'completion_rate')}
+                    fill="var(--admin-accent-soft)"
+                  />
+                  <polyline
+                    points={trendPolyline(dashboard.trend, 'completion_rate')}
+                    fill="none"
+                    stroke="var(--admin-accent)"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <polyline
+                    points={trendPolyline(dashboard.trend, 'pass_rate')}
+                    fill="none"
+                    stroke="var(--admin-amber)"
+                    strokeWidth="2"
+                    strokeDasharray="5 5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {dashboard.trend.map((point, index) => (
+                    <g key={point.exam_id}>
+                      <circle
+                        cx={trendX(index, dashboard.trend.length)}
+                        cy={trendY(point.completion_rate)}
+                        r="3.2"
+                        fill="var(--admin-accent)"
+                      >
+                        <title>
+                          {`${point.title}：完成率 ${point.completion_rate}%（${point.completed}/${point.assigned} 人）`}
+                        </title>
+                      </circle>
+                      <circle
+                        cx={trendX(index, dashboard.trend.length)}
+                        cy={trendY(point.pass_rate)}
+                        r="2.6"
+                        fill="var(--admin-amber)"
+                      >
+                        <title>{`${point.title}：通过率 ${point.pass_rate}%`}</title>
+                      </circle>
+                    </g>
+                  ))}
+                  {dashboard.trend.map((point, index) => (
+                    <text
+                      key={`x-${point.exam_id}`}
+                      x={trendX(index, dashboard.trend.length)}
+                      y="238"
+                      textAnchor="middle"
+                      className="chart-label"
+                    >
+                      {point.label}
+                    </text>
+                  ))}
+                </svg>
+                <Space size={18} style={{ marginTop: 8 }}>
+                  <Space size={6}>
+                    <span className="legend-dot" style={{ background: 'var(--admin-accent)' }} />
+                    完成率
+                  </Space>
+                  <Space size={6}>
+                    <span className="legend-dot" style={{ background: 'var(--admin-amber)' }} />
+                    通过率
+                  </Space>
+                </Space>
+              </>
+            ) : (
+              <div className="trend-empty">
+                <Typography.Text type="secondary">
+                  暂无已发布考试数据，发布考试并产生提交后会显示趋势。
+                </Typography.Text>
+              </div>
+            )}
           </Card>
         </Col>
 

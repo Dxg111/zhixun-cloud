@@ -1,6 +1,6 @@
-import { App as AntApp, Button, Card, Col, Empty, Progress, Row, Space, Spin, Typography } from 'antd'
+import { App as AntApp, Button, Card, Col, Empty, Input, Progress, Row, Space, Spin, Typography } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import EditKnowledgeCardModal from '../components/EditKnowledgeCardModal'
 import GenerateCardsModal from '../components/GenerateCardsModal'
 import PageHeader from '../components/PageHeader'
@@ -15,8 +15,11 @@ import {
 export default function CardsPage() {
   const { message } = AntApp.useApp()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const keywordFromUrl = searchParams.get('keyword') || ''
   const [cards, setCards] = useState<AdminKnowledgeCard[]>([])
   const [loading, setLoading] = useState(false)
+  const [keyword, setKeyword] = useState('')
   const [generateOpen, setGenerateOpen] = useState(false)
   const [editingCardId, setEditingCardId] = useState<number | null>(null)
 
@@ -31,14 +34,18 @@ export default function CardsPage() {
   const loadCards = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await listKnowledgeCards({ page_size: 100 })
+      const data = await listKnowledgeCards({ keyword, page_size: 100 })
       setCards(data.items)
     } catch (error) {
       handleError(error)
     } finally {
       setLoading(false)
     }
-  }, [handleError])
+  }, [handleError, keyword])
+
+  useEffect(() => {
+    if (keywordFromUrl) setKeyword(keywordFromUrl)
+  }, [keywordFromUrl])
 
   useEffect(() => {
     void loadCards()
@@ -67,6 +74,14 @@ export default function CardsPage() {
         description="考前速览卡片，3–5 张一组。发布后才能关联考试，员工端会记录阅读率。"
         extra={
           <Space>
+            <Input.Search
+              allowClear
+              key={keyword}
+              defaultValue={keyword}
+              placeholder="搜索知识卡标题"
+              style={{ width: 220 }}
+              onSearch={(value) => setKeyword(value.trim())}
+            />
             <Button onClick={() => message.info('知识卡模板待接入（骨架）')}>查看模板</Button>
             <Button type="primary" onClick={() => setGenerateOpen(true)}>
               生成知识卡

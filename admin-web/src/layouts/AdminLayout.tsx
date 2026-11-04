@@ -19,7 +19,6 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import {
-  App as AntApp,
   Avatar,
   Badge,
   Breadcrumb,
@@ -44,6 +43,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard': '工作台',
   '/org': '组织与员工',
   '/join-requests': '加入审核',
+  '/search': '全局搜索',
   '/knowledge': '知识库',
   '/questions': '题库审核',
   '/cards': '知识卡',
@@ -136,15 +136,21 @@ function buildMenuItems(
 
 export default function AdminLayout() {
   const { mode, toggle } = useThemeMode()
-  const { message } = AntApp.useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const [pendingQuestions, setPendingQuestions] = useState(0)
   const [pendingCards, setPendingCards] = useState(0)
   const [pendingJoinRequests, setPendingJoinRequests] = useState(0)
+  const [searchValue, setSearchValue] = useState('')
   const pageTitle = PAGE_TITLES[location.pathname] ?? '工作台'
   const user = getStoredUser()
+
+  useEffect(() => {
+    if (location.pathname !== '/search') return
+    const query = new URLSearchParams(location.search).get('q')
+    if (query) setSearchValue(query)
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     let cancelled = false
@@ -274,9 +280,15 @@ export default function AdminLayout() {
           <div className="admin-header-right">
             <Input
               className="admin-search"
+              value={searchValue}
               prefix={<SearchOutlined />}
               placeholder="搜索员工、题目、考试..."
-              onPressEnter={() => message.info('全局搜索接口待接入（骨架）')}
+              allowClear
+              onChange={(event) => setSearchValue(event.target.value)}
+              onPressEnter={() => {
+                const keyword = searchValue.trim()
+                if (keyword) navigate(`/search?q=${encodeURIComponent(keyword)}`)
+              }}
             />
             <Button
               type="text"
