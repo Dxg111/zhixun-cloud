@@ -64,12 +64,12 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        <Text className="login-foot">页面骨架 V0.1 · 模拟数据</Text>
+        <Text className="login-foot">企业数据按租户隔离 · 支持私有化部署</Text>
       </aside>
 
       <main className="login-form-wrap">
         <div className="login-card">
-          <div className="page-eyebrow">TENANT ADMIN</div>
+          <div className="page-eyebrow">企业管理员</div>
           <Title level={2} className="login-form-title">登录管理后台</Title>
           <Paragraph type="secondary" className="login-form-sub">
             使用租户编码和管理员账号进入。
@@ -78,17 +78,16 @@ export default function LoginPage() {
           <Form
             layout="vertical"
             onFinish={handleFinish}
-            initialValues={{ tenant: 'demo', username: 'admin', password: 'demo1234' }}
             requiredMark={false}
           >
             <Form.Item name="tenant" label="租户编码" rules={[{ required: true, message: '请输入租户编码' }]}>
-              <Input autoComplete="organization" />
+              <Input autoComplete="organization" placeholder="请输入企业编码" />
             </Form.Item>
             <Form.Item name="username" label="管理员账号" rules={[{ required: true, message: '请输入管理员账号' }]}>
-              <Input autoComplete="username" />
+              <Input autoComplete="username" placeholder="请输入管理员账号" />
             </Form.Item>
             <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
-              <Input.Password autoComplete="current-password" />
+              <Input.Password autoComplete="current-password" placeholder="请输入密码" />
             </Form.Item>
             <Button type="primary" htmlType="submit" block size="large" loading={loading}>
               进入工作台
@@ -96,8 +95,7 @@ export default function LoginPage() {
           </Form>
 
           <Paragraph type="secondary" className="login-hint">
-            登录会调用后端 <Text code>POST /api/v1/auth/admin/login</Text>。本地默认账号：
-            <Text code>demo / admin / demo1234</Text>，可在后端环境变量中修改。
+            如忘记密码，请联系平台管理员重置。
           </Paragraph>
         </div>
       </main>
