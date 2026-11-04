@@ -15,6 +15,7 @@ import {
   SunOutlined,
   TeamOutlined,
   UnorderedListOutlined,
+  UsergroupAddOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import {
@@ -42,6 +43,7 @@ const { Header, Sider, Content } = Layout
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': '工作台',
   '/org': '组织与员工',
+  '/join-requests': '加入审核',
   '/knowledge': '知识库',
   '/questions': '题库审核',
   '/cards': '知识卡',
@@ -54,6 +56,7 @@ const PAGE_TITLES: Record<string, string> = {
 function buildMenuItems(
   pendingQuestions: number,
   pendingCards: number,
+  pendingJoinRequests: number,
 ): MenuProps['items'] {
   const pendingBadge = (count: number, color: string, hint: string) =>
     count > 0 ? (
@@ -71,7 +74,19 @@ function buildMenuItems(
     {
       type: 'group',
       label: '组织',
-      children: [{ key: '/org', icon: <ApartmentOutlined />, label: '组织与员工' }],
+      children: [
+        { key: '/org', icon: <ApartmentOutlined />, label: '组织与员工' },
+        {
+          key: '/join-requests',
+          icon: <UsergroupAddOutlined />,
+          label: (
+            <Space size={8}>
+              加入审核
+              {pendingBadge(pendingJoinRequests, 'blue', '待审核加入申请数量')}
+            </Space>
+          ),
+        },
+      ],
     },
     {
       type: 'group',
@@ -127,6 +142,7 @@ export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [pendingQuestions, setPendingQuestions] = useState(0)
   const [pendingCards, setPendingCards] = useState(0)
+  const [pendingJoinRequests, setPendingJoinRequests] = useState(0)
   const pageTitle = PAGE_TITLES[location.pathname] ?? '工作台'
   const user = getStoredUser()
 
@@ -137,6 +153,7 @@ export default function AdminLayout() {
         if (cancelled) return
         setPendingQuestions(data.pending_questions)
         setPendingCards(data.pending_cards)
+        setPendingJoinRequests(data.pending_join_requests)
       })
       .catch(() => {})
     return () => {
@@ -145,15 +162,15 @@ export default function AdminLayout() {
   }, [location.pathname])
 
   const menuItems = useMemo(
-    () => buildMenuItems(pendingQuestions, pendingCards),
-    [pendingQuestions, pendingCards],
+    () => buildMenuItems(pendingQuestions, pendingCards, pendingJoinRequests),
+    [pendingQuestions, pendingCards, pendingJoinRequests],
   )
   const displayName = user?.name || '李培训'
   const roleLabel = user?.role === 'tenant_admin' ? '企业管理员' : '管理员'
   const avatarText = displayName.slice(0, 1) || '李'
 
   const notificationMenu: MenuProps = {
-    items: pendingQuestions + pendingCards > 0
+    items: pendingQuestions + pendingCards + pendingJoinRequests > 0
       ? [
           ...(pendingQuestions > 0
             ? [{ key: 'questions', label: `${pendingQuestions} 道题等待审核` }]
@@ -161,11 +178,15 @@ export default function AdminLayout() {
           ...(pendingCards > 0
             ? [{ key: 'cards', label: `${pendingCards} 张知识卡等待发布` }]
             : []),
+          ...(pendingJoinRequests > 0
+            ? [{ key: 'join-requests', label: `${pendingJoinRequests} 条加入申请等待审核` }]
+            : []),
         ]
       : [{ key: 'empty', label: '暂无待办通知', disabled: true }],
     onClick: ({ key }) => {
       if (key === 'questions') navigate('/questions')
       if (key === 'cards') navigate('/cards')
+      if (key === 'join-requests') navigate('/join-requests')
     },
   }
 

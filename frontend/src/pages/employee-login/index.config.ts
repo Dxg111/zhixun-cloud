@@ -1,3 +1,3 @@
 export default definePageConfig({
-  navigationBarTitleText: '企业培训登录',
+  navigationBarTitleText: '加入企业',
 })

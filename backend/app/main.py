@@ -13,6 +13,7 @@ from app.api.v1.routes import (
     admin_accounts,
     admin_documents,
     admin_exams,
+    admin_join_requests,
     admin_knowledge_cards,
     admin_org,
     admin_questions,
@@ -40,6 +41,7 @@ from app.core.exceptions import (
     ReportGenerationError,
 )
 from app.models.common import ApiResponse
+from app.services.employee_join_service import EmployeeJoinError
 
 logger = structlog.get_logger()
 
@@ -86,6 +88,7 @@ app.include_router(admin_org.router, prefix="/api/v1")
 app.include_router(admin_documents.router, prefix="/api/v1")
 app.include_router(admin_settings.router, prefix="/api/v1")
 app.include_router(admin_exams.router, prefix="/api/v1")
+app.include_router(admin_join_requests.router, prefix="/api/v1")
 app.include_router(employee.router, prefix="/api/v1")
 app.include_router(quiz.router, prefix="/api/v1")
 app.include_router(report.router, prefix="/api/v1")
@@ -171,6 +174,14 @@ async def admin_exam_error_handler(request: Request, exc: AdminExamError):
     return JSONResponse(
         status_code=400,
         content=ApiResponse.error(code=4006, message=str(exc)).model_dump(),
+    )
+
+
+@app.exception_handler(EmployeeJoinError)
+async def employee_join_error_handler(request: Request, exc: EmployeeJoinError):
+    return JSONResponse(
+        status_code=400,
+        content=ApiResponse.error(code=4007, message=str(exc)).model_dump(),
     )
 
 

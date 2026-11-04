@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import io
-import secrets
 
 import structlog
 
@@ -31,18 +30,6 @@ def _to_org_item(org: dict) -> OrgUnitItem:
 
 def _to_employee_item(employee: dict) -> EmployeeItem:
     return EmployeeItem(**employee)
-
-
-def _generate_invite_code() -> str:
-    return secrets.token_hex(4).upper()
-
-
-async def _unique_invite_code(tenant_code: str) -> str:
-    for _ in range(8):
-        code = _generate_invite_code()
-        if await admin_org_repository.find_employee_by_invite(tenant_code, code) is None:
-            return code
-    raise AdminOrgError("邀请码生成失败，请重试")
 
 
 async def _ensure_org_path(tenant_code: str, dept_path: str) -> int | None:
@@ -142,14 +129,12 @@ async def create_employee(
         if org is None:
             raise AdminOrgError("部门不存在")
 
-    invite_code = await _unique_invite_code(tenant_code)
     employee_id = await admin_org_repository.create_employee(
         tenant_code=tenant_code,
         org_id=req.org_id,
         employee_no=employee_no,
         name=name,
         role=role,
-        invite_code=invite_code,
     )
     employee = await admin_org_repository.get_employee(tenant_code, employee_id)
     if employee is None:
@@ -224,14 +209,12 @@ async def import_employees(
 
         try:
             org_id = await _ensure_org_path(tenant_code, row["dept_path"])
-            invite_code = await _unique_invite_code(tenant_code)
             await admin_org_repository.create_employee(
                 tenant_code=tenant_code,
                 org_id=org_id,
                 employee_no=row["employee_no"],
                 name=row["name"],
                 role=row["role"],
-                invite_code=invite_code,
             )
             imported += 1
         except Exception as exc:  # noqa: BLE001
@@ -270,14 +253,3 @@ async def update_employee_status(
     return _to_employee_item(target)
 
 
-async def reset_employee_invite(tenant_code: str, employee_id: int) -> EmployeeItem:
-    target = await admin_org_repository.get_employee(tenant_code, employee_id)
-    if target is None:
-        raise AdminOrgError("员工不存在")
-
-    invite_code = await _unique_invite_code(tenant_code)
-    await admin_org_repository.reset_invite(tenant_code, employee_id, invite_code)
-    updated = await admin_org_repository.get_employee(tenant_code, employee_id)
-    if updated is None:
-        raise AdminOrgError("员工不存在")
-    return _to_employee_item(updated)

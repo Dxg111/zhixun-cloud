@@ -148,12 +148,11 @@ export interface EmployeeItem {
   id: number
   tenant_code: string
   org_id: number | null
+  user_id: number | null
   employee_no: string
   name: string
   role: string
   status: 'active' | 'disabled'
-  invite_code: string
-  invite_status: 'bound' | 'unbound'
   org_path: string
   created_at: string
 }
@@ -271,10 +270,36 @@ export interface TenantSettings {
 export interface DashboardData {
   pending_questions: number
   pending_cards: number
+  pending_join_requests: number
   active_exams: number
   completion_rate: number
   recent_exams: AdminExam[]
   weak_points: Array<{ name?: string; value?: number }>
+}
+
+export interface JoinRequestItem {
+  id: number
+  tenant_code: string
+  tenant_name: string
+  user_id: number
+  name: string
+  employee_no: string
+  org_id: number | null
+  org_path: string
+  role: string
+  remark: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  reject_reason: string | null
+  reviewed_by: string | null
+  reviewed_at: string
+  created_at: string
+}
+
+export interface JoinRequestListResponse {
+  items: JoinRequestItem[]
+  total: number
+  page: number
+  page_size: number
 }
 
 export function getToken(): string {
@@ -582,9 +607,32 @@ export function updateEmployeeStatus(employeeId: number, status: 'active' | 'dis
   })
 }
 
-export function resetEmployeeInvite(employeeId: number) {
-  return request<EmployeeItem>(`/admin/employees/${employeeId}/reset-invite`, {
+export function listJoinRequests(params: {
+  status?: 'pending' | 'approved' | 'rejected' | 'all'
+  page?: number
+  page_size?: number
+} = {}) {
+  const query = new URLSearchParams()
+  query.set('status', params.status ?? 'pending')
+  query.set('page', String(params.page ?? 1))
+  query.set('page_size', String(params.page_size ?? 100))
+  return request<JoinRequestListResponse>(`/admin/join-requests?${query.toString()}`)
+}
+
+export function approveJoinRequest(
+  requestId: number,
+  payload: { org_id?: number | null; role: string },
+) {
+  return request<JoinRequestItem>(`/admin/join-requests/${requestId}/approve`, {
     method: 'POST',
+    body: payload,
+  })
+}
+
+export function rejectJoinRequest(requestId: number, reason: string) {
+  return request<JoinRequestItem>(`/admin/join-requests/${requestId}/reject`, {
+    method: 'POST',
+    body: { reason },
   })
 }
 

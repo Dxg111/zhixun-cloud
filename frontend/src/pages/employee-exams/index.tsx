@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import {
-  clearEmployeeAuth,
   getEmployeeToken,
   getEmployeeUser,
   listEmployeeExams,
@@ -63,9 +62,8 @@ export default function EmployeeExamsPage() {
     Taro.navigateTo({ url: `/pages/employee-cards/index?examId=${exam.id}` })
   }
 
-  const handleLogout = () => {
-    clearEmployeeAuth()
-    Taro.redirectTo({ url: '/pages/employee-login/index' })
+  const handleBackHome = () => {
+    Taro.switchTab({ url: '/pages/index/index' })
   }
 
   const pendingCount = exams.filter(
@@ -88,7 +86,7 @@ export default function EmployeeExamsPage() {
             >
               <Text>错题重练</Text>
             </View>
-            <Text className='employee-logout' onClick={handleLogout}>退出</Text>
+            <Text className='employee-logout' onClick={handleBackHome}>首页</Text>
           </View>
         </View>
 

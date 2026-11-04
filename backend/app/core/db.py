@@ -231,6 +231,7 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         tenant_code VARCHAR(64) NOT NULL DEFAULT 'demo',
         org_id BIGINT UNSIGNED NULL,
+        user_id BIGINT UNSIGNED NULL,
         employee_no VARCHAR(64) NOT NULL,
         name VARCHAR(100) NOT NULL,
         role VARCHAR(30) NOT NULL DEFAULT '员工',
@@ -242,8 +243,39 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
         PRIMARY KEY (id),
         UNIQUE KEY uk_employees_tenant_no (tenant_code, employee_no),
         UNIQUE KEY uk_employees_tenant_invite (tenant_code, invite_code),
+        UNIQUE KEY uk_employees_user (user_id),
         KEY idx_employees_tenant_org_status (tenant_code, org_id, status),
         CONSTRAINT fk_employees_org
+            FOREIGN KEY (org_id) REFERENCES org_units (id)
+            ON DELETE SET NULL ON UPDATE CASCADE,
+        CONSTRAINT fk_employees_user
+            FOREIGN KEY (user_id) REFERENCES users (id)
+            ON DELETE SET NULL ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS employee_join_requests (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        tenant_code VARCHAR(64) NOT NULL DEFAULT 'demo',
+        user_id BIGINT UNSIGNED NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        employee_no VARCHAR(64) NOT NULL,
+        org_id BIGINT UNSIGNED NULL,
+        role VARCHAR(30) NOT NULL DEFAULT '员工',
+        remark VARCHAR(500) NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        reject_reason VARCHAR(500) NULL,
+        reviewed_by VARCHAR(64) NULL,
+        reviewed_at DATETIME NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_join_requests_tenant_status (tenant_code, status, created_at),
+        KEY idx_join_requests_user_status (user_id, status),
+        CONSTRAINT fk_join_requests_user
+            FOREIGN KEY (user_id) REFERENCES users (id)
+            ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT fk_join_requests_org
             FOREIGN KEY (org_id) REFERENCES org_units (id)
             ON DELETE SET NULL ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -479,6 +511,17 @@ async def _ensure_column(cursor, table: str, column: str, ddl: str) -> None:
         await cursor.execute(ddl)
 
 
+async def _ensure_index(cursor, table: str, index_name: str, ddl: str) -> None:
+    await cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.statistics "
+        "WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s",
+        (table, index_name),
+    )
+    row = await cursor.fetchone()
+    if row and int(row[0]) == 0:
+        await cursor.execute(ddl)
+
+
 async def init_mysql() -> None:
     """初始化数据库与基础表结构。"""
     global _pool
@@ -538,6 +581,18 @@ async def init_mysql() -> None:
                 "knowledge_cards",
                 "doc_id",
                 "ALTER TABLE knowledge_cards ADD COLUMN doc_id BIGINT UNSIGNED NULL AFTER tenant_code",
+            )
+            await _ensure_column(
+                cursor,
+                "employees",
+                "user_id",
+                "ALTER TABLE employees ADD COLUMN user_id BIGINT UNSIGNED NULL AFTER org_id",
+            )
+            await _ensure_index(
+                cursor,
+                "employees",
+                "uk_employees_user",
+                "ALTER TABLE employees ADD UNIQUE KEY uk_employees_user (user_id)",
             )
 
     logger.info("mysql_initialized", database=settings.mysql_database)

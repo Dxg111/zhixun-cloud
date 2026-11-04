@@ -17,6 +17,7 @@ import { getDashboard, getToken, type AdminExam, type DashboardData } from '../s
 const EMPTY_DASHBOARD: DashboardData = {
   pending_questions: 0,
   pending_cards: 0,
+  pending_join_requests: 0,
   active_exams: 0,
   completion_rate: 0,
   recent_exams: [],

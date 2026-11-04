@@ -8,6 +8,7 @@ import {
   getQuizHistory,
   waitForLogin,
   getEmployeeToken,
+  getEmployeeUser,
   getUsableAvatarUrl,
   listEmployeeExams,
 } from '../../services/api'
@@ -103,6 +104,9 @@ export default function IndexPage() {
   }
 
   const avatarUrl = getUsableAvatarUrl(user?.avatar_url)
+  const employeeUser = getEmployeeUser()
+  const displayName = employeeUser?.name || user?.nickname || '同学'
+  const displayOrg = employeeUser?.org_path || '企业学习中心'
 
   return (
     <View className='index-page paper-bg'>
@@ -113,12 +117,12 @@ export default function IndexPage() {
             <Image className='hello-avatar-img' src={avatarUrl} mode='aspectFill' />
           ) : (
             <View className='hello-avatar'>
-              <Text>{user?.nickname?.[0] || '智'}</Text>
+              <Text>{displayName[0] || '智'}</Text>
             </View>
           )}
           <View className='hello-body'>
-            <Text className='hello-name'>{user?.nickname || '同学'}</Text>
-            <Text className='hello-org'>企业学习中心</Text>
+            <Text className='hello-name'>{displayName}</Text>
+            <Text className='hello-org'>{displayOrg}</Text>
           </View>
         </View>
         <View className='coin-badge'>

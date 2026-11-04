@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from typing import Any, Optional
 
 import structlog
@@ -31,14 +32,13 @@ def _to_employee(row: tuple) -> dict:
         "id": row[0],
         "tenant_code": row[1],
         "org_id": row[2],
-        "employee_no": row[3],
-        "name": row[4],
-        "role": row[5],
-        "status": row[6],
-        "invite_code": row[7],
-        "invite_status": row[8],
-        "org_path": row[9] or "",
-        "created_at": _datetime_text(row[10]),
+        "user_id": row[3],
+        "employee_no": row[4],
+        "name": row[5],
+        "role": row[6],
+        "status": row[7],
+        "org_path": row[8] or "",
+        "created_at": _datetime_text(row[9]),
     }
 
 
@@ -155,8 +155,8 @@ async def list_employees(
             total = int(total_row[0]) if total_row else 0
 
             await cur.execute(
-                "SELECT e.id, e.tenant_code, e.org_id, e.employee_no, e.name, e.role, "
-                "e.status, e.invite_code, e.invite_status, COALESCE(o.path, ''), e.created_at "
+                "SELECT e.id, e.tenant_code, e.org_id, e.user_id, e.employee_no, e.name, e.role, "
+                "e.status, COALESCE(o.path, ''), e.created_at "
                 "FROM employees e LEFT JOIN org_units o ON e.org_id = o.id "
                 f"WHERE {where} ORDER BY e.created_at ASC, e.id ASC LIMIT %s OFFSET %s",
                 tuple([*params, page_size, offset]),
@@ -174,8 +174,8 @@ async def get_employee(tenant_code: str, employee_id: int) -> Optional[dict]:
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT e.id, e.tenant_code, e.org_id, e.employee_no, e.name, e.role, "
-                "e.status, e.invite_code, e.invite_status, COALESCE(o.path, ''), e.created_at "
+                "SELECT e.id, e.tenant_code, e.org_id, e.user_id, e.employee_no, e.name, e.role, "
+                "e.status, COALESCE(o.path, ''), e.created_at "
                 "FROM employees e LEFT JOIN org_units o ON e.org_id = o.id "
                 "WHERE e.tenant_code = %s AND e.id = %s",
                 (tenant_code, employee_id),
@@ -192,8 +192,8 @@ async def find_employee_by_no(tenant_code: str, employee_no: str) -> Optional[di
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT e.id, e.tenant_code, e.org_id, e.employee_no, e.name, e.role, "
-                "e.status, e.invite_code, e.invite_status, COALESCE(o.path, ''), e.created_at "
+                "SELECT e.id, e.tenant_code, e.org_id, e.user_id, e.employee_no, e.name, e.role, "
+                "e.status, COALESCE(o.path, ''), e.created_at "
                 "FROM employees e LEFT JOIN org_units o ON e.org_id = o.id "
                 "WHERE e.tenant_code = %s AND e.employee_no = %s",
                 (tenant_code, employee_no),
@@ -210,8 +210,8 @@ async def find_employee_by_invite(tenant_code: str, invite_code: str) -> Optiona
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT e.id, e.tenant_code, e.org_id, e.employee_no, e.name, e.role, "
-                "e.status, e.invite_code, e.invite_status, COALESCE(o.path, ''), e.created_at "
+                "SELECT e.id, e.tenant_code, e.org_id, e.user_id, e.employee_no, e.name, e.role, "
+                "e.status, COALESCE(o.path, ''), e.created_at "
                 "FROM employees e LEFT JOIN org_units o ON e.org_id = o.id "
                 "WHERE e.tenant_code = %s AND e.invite_code = %s",
                 (tenant_code, invite_code),
@@ -226,21 +226,84 @@ async def create_employee(
     employee_no: str,
     name: str,
     role: str,
-    invite_code: str,
+    user_id: Optional[int] = None,
 ) -> int:
     pool = get_mysql_pool()
     if pool is None:
         raise RuntimeError("数据库未初始化，无法创建员工")
 
+    # invite_code 是历史字段，仍保留 NOT NULL 约束；不再对外暴露。
+    legacy_invite_code = secrets.token_hex(8).upper()
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
                 "INSERT INTO employees "
-                "(tenant_code, org_id, employee_no, name, role, status, invite_code, invite_status) "
-                "VALUES (%s, %s, %s, %s, %s, 'active', %s, 'unbound')",
-                (tenant_code, org_id, employee_no, name, role, invite_code),
+                "(tenant_code, org_id, user_id, employee_no, name, role, status, invite_code, invite_status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'active', %s, 'bound')",
+                (tenant_code, org_id, user_id, employee_no, name, role, legacy_invite_code),
             )
             return int(cur.lastrowid)
+
+
+async def find_employee_by_user(user_id: int) -> Optional[dict]:
+    pool = get_mysql_pool()
+    if pool is None:
+        return None
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT e.id, e.tenant_code, e.org_id, e.user_id, e.employee_no, e.name, e.role, "
+                "e.status, COALESCE(o.path, ''), e.created_at "
+                "FROM employees e LEFT JOIN org_units o ON e.org_id = o.id "
+                "WHERE e.user_id = %s",
+                (user_id,),
+            )
+            row = await cur.fetchone()
+            return _to_employee(row) if row else None
+
+
+async def bind_employee_user(tenant_code: str, employee_id: int, user_id: int) -> int:
+    pool = get_mysql_pool()
+    if pool is None:
+        raise RuntimeError("数据库未初始化，无法绑定员工")
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE employees SET user_id = %s, invite_status = 'bound' "
+                "WHERE tenant_code = %s AND id = %s AND user_id IS NULL",
+                (user_id, tenant_code, employee_id),
+            )
+            return int(cur.rowcount)
+
+
+async def update_employee_assignment(
+    tenant_code: str,
+    employee_id: int,
+    org_id: Optional[int],
+    role: str,
+    name: Optional[str] = None,
+) -> int:
+    pool = get_mysql_pool()
+    if pool is None:
+        raise RuntimeError("数据库未初始化，无法更新员工")
+
+    fields = ["org_id = %s", "role = %s"]
+    values: list[Any] = [org_id, role]
+    if name:
+        fields.append("name = %s")
+        values.append(name)
+    values.extend([tenant_code, employee_id])
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                f"UPDATE employees SET {', '.join(fields)} "
+                "WHERE tenant_code = %s AND id = %s",
+                tuple(values),
+            )
+            return int(cur.rowcount)
 
 
 async def update_employee_status(tenant_code: str, employee_id: int, status: str) -> int:

@@ -82,15 +82,3 @@ async def update_employee_status(
         status=req.status,
     )
     return ApiResponse.success(data=result.model_dump())
-
-
-@router.post("/employees/{employee_id}/reset-invite", response_model=ApiResponse)
-async def reset_employee_invite(
-    employee_id: int,
-    context: dict = Depends(get_admin_context),
-):
-    result = await admin_org_service.reset_employee_invite(
-        tenant_code=context["tenant_code"],
-        employee_id=employee_id,
-    )
-    return ApiResponse.success(data=result.model_dump())

@@ -67,7 +67,7 @@ export default function ImportEmployeesModal({
           <InboxOutlined />
         </p>
         <p className="ant-upload-text">点击或拖拽员工文件到这里</p>
-        <p className="ant-upload-hint">导入后自动生成一次性邀请码</p>
+        <p className="ant-upload-hint">导入后员工可在小程序提交加入申请，审核通过即可绑定微信</p>
       </Upload.Dragger>
 
       {file ? (

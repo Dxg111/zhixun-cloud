@@ -4,6 +4,7 @@ import AdminLayout from './layouts/AdminLayout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import OrgPage from './pages/OrgPage'
+import JoinRequestsPage from './pages/JoinRequestsPage'
 import KnowledgePage from './pages/KnowledgePage'
 import QuestionsPage from './pages/QuestionsPage'
 import CardsPage from './pages/CardsPage'
@@ -26,6 +27,7 @@ export default function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/org" element={<OrgPage />} />
+        <Route path="/join-requests" element={<JoinRequestsPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/questions" element={<QuestionsPage />} />
         <Route path="/cards" element={<CardsPage />} />

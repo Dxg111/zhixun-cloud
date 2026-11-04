@@ -112,7 +112,7 @@ def create_employee_token(
     display_name: str,
     employee_no: str,
 ) -> str:
-    """生成员工 JWT。MVP 使用邀请码登录；后续替换为微信 openid 绑定。"""
+    """生成员工 JWT。员工通过企业加入审核后，用微信身份换取该 token。"""
     settings = get_settings()
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {

@@ -2,21 +2,48 @@
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.auth import get_employee_context
+from app.core.auth import get_current_user, get_employee_context
 from app.models.common import ApiResponse
-from app.models.employee_exam import EmployeeAnswersRequest, EmployeeLoginRequest
+from app.models.employee_exam import EmployeeAnswersRequest, EmployeeLoginResponse
+from app.models.employee_join import JoinRequestCreate
 from app.models.employee_learning import (
     EmployeeWrongMasterRequest,
     EmployeeWrongRetryRequest,
 )
-from app.services import employee_exam_service, employee_learning_service
+from app.services import (
+    employee_exam_service,
+    employee_join_service,
+    employee_learning_service,
+)
 
 router = APIRouter(prefix="/employee", tags=["employee"])
 
 
-@router.post("/login", response_model=ApiResponse)
-async def employee_login(req: EmployeeLoginRequest):
-    result = await employee_exam_service.login(req.tenant_code, req.invite_code)
+@router.get("/membership", response_model=ApiResponse)
+async def get_membership(user_id: int = Depends(get_current_user)):
+    result = await employee_join_service.get_membership(user_id)
+    return ApiResponse.success(data=result.model_dump())
+
+
+@router.post("/join-requests", response_model=ApiResponse)
+async def submit_join_request(
+    req: JoinRequestCreate,
+    user_id: int = Depends(get_current_user),
+):
+    result = await employee_join_service.submit_join_request(user_id, req)
+    return ApiResponse.success(data=result.model_dump())
+
+
+@router.get("/join-requests/mine", response_model=ApiResponse)
+async def list_my_join_requests(user_id: int = Depends(get_current_user)):
+    result = await employee_join_service.list_my_requests(user_id)
+    return ApiResponse.success(data=result.model_dump())
+
+
+@router.post("/session", response_model=ApiResponse)
+async def create_employee_session(user_id: int = Depends(get_current_user)):
+    token, employee = await employee_join_service.login_by_user(user_id)
+    result = EmployeeLoginResponse(token=token, employee=employee)
     return ApiResponse.success(data=result.model_dump())
 
 

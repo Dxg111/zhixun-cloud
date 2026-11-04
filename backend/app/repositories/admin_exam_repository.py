@@ -427,7 +427,13 @@ async def get_distribution(tenant_code: str, exam_id: int) -> list[int]:
 async def dashboard_counts(tenant_code: str) -> dict:
     pool = get_mysql_pool()
     if pool is None:
-        return {"pending_questions": 0, "pending_cards": 0, "active_exams": 0, "completion_rate": 0}
+        return {
+            "pending_questions": 0,
+            "pending_cards": 0,
+            "pending_join_requests": 0,
+            "active_exams": 0,
+            "completion_rate": 0,
+        }
 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -442,6 +448,13 @@ async def dashboard_counts(tenant_code: str) -> dict:
                 (tenant_code,),
             )
             pending_cards = int((await cur.fetchone())[0])
+
+            await cur.execute(
+                "SELECT COUNT(*) FROM employee_join_requests "
+                "WHERE tenant_code = %s AND status = 'pending'",
+                (tenant_code,),
+            )
+            pending_join_requests = int((await cur.fetchone())[0])
 
             await cur.execute(
                 "SELECT COUNT(*) FROM exams WHERE tenant_code = %s AND status = 'published'",
@@ -469,6 +482,7 @@ async def dashboard_counts(tenant_code: str) -> dict:
     return {
         "pending_questions": pending_questions,
         "pending_cards": pending_cards,
+        "pending_join_requests": pending_join_requests,
         "active_exams": active_exams,
         "completion_rate": round(completed / assigned * 100) if assigned else 0,
     }

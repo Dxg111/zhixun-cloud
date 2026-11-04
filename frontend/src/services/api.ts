@@ -456,6 +456,33 @@ export interface EmployeeLoginResponse {
   employee: EmployeeInfo
 }
 
+export interface EmployeeJoinRequest {
+  id: number
+  tenant_code: string
+  tenant_name: string
+  user_id: number
+  name: string
+  employee_no: string
+  org_id: number | null
+  org_path: string
+  role: string
+  remark: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  reject_reason: string | null
+  reviewed_by: string | null
+  reviewed_at: string
+  created_at: string
+}
+
+export interface EmployeeMembership {
+  status: 'none' | 'pending' | 'rejected' | 'approved' | 'disabled'
+  tenant_code: string | null
+  tenant_name: string | null
+  employee: EmployeeInfo | null
+  request: EmployeeJoinRequest | null
+  message: string
+}
+
 export interface EmployeeExamItem {
   id: number
   title: string
@@ -573,7 +600,7 @@ export async function employeeRequest<T = any>(
   const body = res.data as ApiResponse<T>
   if (body.code === 4010) {
     clearEmployeeAuth()
-    throw new Error('登录已过期，请重新用邀请码登录')
+    throw new Error('登录已过期，请重新进入企业培训')
   }
   if (body.code !== 0) {
     throw new Error(body.message || '请求失败')
@@ -581,10 +608,25 @@ export async function employeeRequest<T = any>(
   return body.data
 }
 
-export function employeeLogin(tenantCode: string, inviteCode: string) {
-  return employeeRequest<EmployeeLoginResponse>('/employee/login', {
+export function getEmployeeMembership() {
+  return request<EmployeeMembership>('/employee/membership')
+}
+
+export function submitEmployeeJoinRequest(payload: {
+  tenant_code: string
+  name: string
+  employee_no: string
+  remark?: string
+}) {
+  return request<EmployeeJoinRequest>('/employee/join-requests', {
     method: 'POST',
-    data: { tenant_code: tenantCode, invite_code: inviteCode },
+    data: payload,
+  })
+}
+
+export function createEmployeeSession() {
+  return request<EmployeeLoginResponse>('/employee/session', {
+    method: 'POST',
   })
 }
 

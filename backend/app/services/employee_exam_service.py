@@ -7,14 +7,11 @@ from datetime import datetime, timedelta
 
 import structlog
 
-from app.core.auth import create_employee_token
 from app.core.exceptions import AdminExamError, AuthenticationError
 from app.models.employee_exam import (
     EmployeeAnswerInput,
     EmployeeExamItem,
     EmployeeExamListResponse,
-    EmployeeInfo,
-    EmployeeLoginResponse,
     EmployeePaperResponse,
     EmployeeResultDetail,
     EmployeeResultResponse,
@@ -28,31 +25,6 @@ from app.repositories import (
 )
 
 logger = structlog.get_logger()
-
-
-async def login(tenant_code: str, invite_code: str) -> EmployeeLoginResponse:
-    employee = await admin_org_repository.find_employee_by_invite(tenant_code, invite_code)
-    if employee is None or employee["status"] != "active":
-        raise AuthenticationError("邀请码无效或员工已停用")
-
-    await admin_org_repository.mark_invite_bound(tenant_code, employee["id"])
-
-    token = create_employee_token(
-        employee_id=employee["id"],
-        tenant_code=employee["tenant_code"],
-        display_name=employee["name"],
-        employee_no=employee["employee_no"],
-    )
-    return EmployeeLoginResponse(
-        token=token,
-        employee=EmployeeInfo(
-            id=employee["id"],
-            tenant_code=employee["tenant_code"],
-            employee_no=employee["employee_no"],
-            name=employee["name"],
-            org_path=employee["org_path"],
-        ),
-    )
 
 
 async def list_exams(tenant_code: str, employee_id: int) -> EmployeeExamListResponse:

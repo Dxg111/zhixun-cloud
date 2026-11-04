@@ -27,12 +27,11 @@ class EmployeeItem(BaseModel):
     id: int
     tenant_code: str
     org_id: int | None = None
+    user_id: int | None = None
     employee_no: str
     name: str
     role: str
     status: Literal["active", "disabled"]
-    invite_code: str
-    invite_status: Literal["bound", "unbound"]
     org_path: str
     created_at: str
 

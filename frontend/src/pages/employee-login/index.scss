@@ -51,6 +51,42 @@
   border: 2px solid var(--line);
   border-top: 6px solid var(--primary);
   background: var(--surface);
+
+  & + & {
+    margin-top: 18px;
+  }
+}
+
+.employee-join-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.employee-join-status-tag {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 20px;
+  font-weight: 500;
+
+  &.is-muted {
+    background: var(--surface-soft);
+    color: var(--muted);
+  }
+}
+
+.employee-join-hint {
+  display: block;
+  margin: 14px 0 18px;
+  padding-top: 14px;
+  border-top: 2px solid var(--line);
+  font-size: 22px;
+  line-height: 1.65;
+  color: var(--muted);
 }
 
 .employee-login-kicker {

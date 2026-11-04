@@ -1,4 +1,4 @@
-import { ImportOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import { ImportOutlined, PlusOutlined } from '@ant-design/icons'
 import {
   App as AntApp,
   Avatar,
@@ -28,7 +28,6 @@ import {
   getToken,
   listEmployees,
   listOrgUnits,
-  resetEmployeeInvite,
   updateEmployeeStatus,
   type EmployeeItem,
   type OrgUnitItem,
@@ -145,44 +144,12 @@ export default function OrgPage() {
     await Promise.all([loadOrgs(), loadEmployees()])
   }
 
-  const handleResetInvite = async (employee: EmployeeItem) => {
-    try {
-      const updated = await resetEmployeeInvite(employee.id)
-      message.success(`已重置 ${employee.name} 的邀请码：${updated.invite_code}`)
-      await loadEmployees()
-    } catch (error) {
-      handleError(error)
-    }
-  }
-
   const handleStatus = async (employee: EmployeeItem) => {
     const next = employee.status === 'active' ? 'disabled' : 'active'
     try {
       await updateEmployeeStatus(employee.id, next)
       message.success(next === 'active' ? '员工已启用' : '员工已停用')
       await loadEmployees()
-    } catch (error) {
-      handleError(error)
-    }
-  }
-
-  const handleExportInvites = async () => {
-    try {
-      const data = await listEmployees({ page: 1, page_size: 200 })
-      const lines = ['工号,姓名,部门,邀请码,绑定状态']
-      data.items.forEach((employee) => {
-        lines.push(
-          [employee.employee_no, employee.name, employee.org_path, employee.invite_code, employee.invite_status].join(','),
-        )
-      })
-      const blob = new Blob([`﻿${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = '员工邀请码.csv'
-      anchor.click()
-      URL.revokeObjectURL(url)
-      message.success('邀请码已导出')
     } catch (error) {
       handleError(error)
     }
@@ -223,24 +190,17 @@ export default function OrgPage() {
       render: (status: EmployeeItem['status']) => <StatusTag kind="employee" status={status} />,
     },
     {
-      title: '邀请码',
-      dataIndex: 'invite_status',
-      width: 160,
-      render: (_, employee) => (
-        <Space size={6}>
-          <StatusTag kind="invite" status={employee.invite_status} />
-          <Typography.Text code>{employee.invite_code}</Typography.Text>
-        </Space>
-      ),
+      title: '微信绑定',
+      dataIndex: 'user_id',
+      width: 110,
+      render: (userId: number | null) =>
+        userId ? <Typography.Text type="success">已绑定</Typography.Text> : <Typography.Text type="secondary">未绑定</Typography.Text>,
     },
     {
       title: '操作',
       width: 200,
       render: (_, employee) => (
         <Space size={0}>
-          <Button type="link" size="small" onClick={() => handleResetInvite(employee)}>
-            重置邀请码
-          </Button>
           <Button type="link" size="small" danger={employee.status === 'active'} onClick={() => handleStatus(employee)}>
             {employee.status === 'active' ? '停用' : '启用'}
           </Button>
@@ -252,16 +212,16 @@ export default function OrgPage() {
   return (
     <>
       <PageHeader
-        eyebrow="ORGANIZATION"
+        eyebrow="组织管理"
         title="组织与员工"
-        description="维护部门树、导入员工、生成邀请码。员工首次登录时用邀请码绑定微信。"
+        description="维护部门树、导入员工；员工在小程序提交加入申请后，在这里审核并绑定微信。"
         extra={
           <Space wrap>
             <Button icon={<PlusOutlined />} onClick={() => setOrgModalOpen(true)}>
               新增部门
             </Button>
-            <Button icon={<UploadOutlined />} onClick={handleExportInvites}>
-              导出邀请码
+            <Button onClick={() => navigate('/join-requests')}>
+              加入审核
             </Button>
             <Button icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>
               手动添加

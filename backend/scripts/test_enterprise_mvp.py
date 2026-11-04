@@ -31,6 +31,7 @@ from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app.core.auth import create_token  # noqa: E402
 from app.core.db import close_mysql_pool, get_mysql_pool, init_mysql  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -52,6 +53,8 @@ async def main() -> None:
     exam_id = None
     doc_id = None
     attempt_id = None
+    employee_id = None
+    join_user_id = None
     card_ids: list[int] = []
 
     transport = httpx.ASGITransport(app=app)
@@ -155,6 +158,32 @@ async def main() -> None:
                 if org["path"] == "华东区/上海门店/徐汇店"
             )
 
+            employee_no = f"E2E{suffix}"
+            employee_name = "E2E加入测试"
+            openid = f"e2e_{suffix}"
+            pool = get_mysql_pool()
+            async with pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        "INSERT INTO users (openid, nickname) VALUES (%s, %s)",
+                        (openid, employee_name),
+                    )
+                    join_user_id = int(cur.lastrowid)
+
+            created_employee = await client.post(
+                "/api/v1/admin/employees",
+                json={
+                    "employee_no": employee_no,
+                    "name": employee_name,
+                    "org_id": target_org["id"],
+                    "role": "员工",
+                },
+                headers=admin_headers,
+            )
+            created_employee.raise_for_status()
+            employee_id = created_employee.json()["data"]["id"]
+            app_headers = {"Authorization": f"Bearer {create_token(join_user_id, openid)}"}
+
             exam = await client.post(
                 "/api/v1/admin/exams",
                 json={
@@ -203,15 +232,39 @@ async def main() -> None:
                 f"关联知识卡={len(card_ids)}"
             )
 
-            employee_login = await client.post(
-                "/api/v1/employee/login",
-                json={"tenant_code": "demo", "invite_code": "INV1001"},
+            join_request = await client.post(
+                "/api/v1/employee/join-requests",
+                json={
+                    "tenant_code": "demo",
+                    "name": employee_name,
+                    "employee_no": employee_no,
+                    "remark": "E2E 自动测试",
+                },
+                headers=app_headers,
             )
-            employee_login.raise_for_status()
+            join_request.raise_for_status()
+            join_request_id = join_request.json()["data"]["id"]
+
+            approved = await client.post(
+                f"/api/v1/admin/join-requests/{join_request_id}/approve",
+                json={"org_id": target_org["id"], "role": "员工"},
+                headers=admin_headers,
+            )
+            approved.raise_for_status()
+            assert approved.json()["data"]["status"] == "approved"
+
+            employee_session = await client.post(
+                "/api/v1/employee/session",
+                headers=app_headers,
+            )
+            employee_session.raise_for_status()
             employee_headers = {
-                "Authorization": f"Bearer {employee_login.json()['data']['token']}"
+                "Authorization": f"Bearer {employee_session.json()['data']['token']}"
             }
-            print(f"[7/12] 员工邀请码登录成功：{employee_login.json()['data']['employee']['name']}")
+            print(
+                f"[7/12] 加入申请审核通过，员工会话创建成功："
+                f"{employee_session.json()['data']['employee']['name']}"
+            )
 
             exam_cards = await client.get(
                 f"/api/v1/employee/exams/{exam_id}/cards",
@@ -441,6 +494,19 @@ async def main() -> None:
                                 os.remove(row[0])
                             await cur.execute(
                                 "DELETE FROM admin_documents WHERE id = %s", (doc_id,)
+                            )
+                        if join_user_id is not None:
+                            await cur.execute(
+                                "DELETE FROM employee_join_requests WHERE user_id = %s",
+                                (join_user_id,),
+                            )
+                        if employee_id is not None:
+                            await cur.execute(
+                                "DELETE FROM employees WHERE id = %s", (employee_id,)
+                            )
+                        if join_user_id is not None:
+                            await cur.execute(
+                                "DELETE FROM users WHERE id = %s", (join_user_id,)
                             )
             await close_mysql_pool()
 

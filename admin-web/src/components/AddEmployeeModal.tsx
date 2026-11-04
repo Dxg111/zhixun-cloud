@@ -35,13 +35,13 @@ export default function AddEmployeeModal({
   const handleFinish = async (values: EmployeeFormValues) => {
     setSubmitting(true)
     try {
-      const employee = await createEmployee({
+      await createEmployee({
         employee_no: values.employee_no.trim(),
         name: values.name.trim(),
         org_id: values.org_id,
         role: values.role,
       })
-      message.success(`已添加 ${employee.name}，邀请码：${employee.invite_code}`)
+      message.success(`已添加 ${values.name.trim()}，员工可在小程序提交加入申请`)
       form.resetFields()
       onSuccess()
       onCancel()

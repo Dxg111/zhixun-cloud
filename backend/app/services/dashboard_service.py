@@ -20,6 +20,7 @@ async def get_dashboard(tenant_code: str) -> DashboardResponse:
     return DashboardResponse(
         pending_questions=counts["pending_questions"],
         pending_cards=counts["pending_cards"],
+        pending_join_requests=counts["pending_join_requests"],
         active_exams=counts["active_exams"],
         completion_rate=counts["completion_rate"],
         recent_exams=[ExamItem(**item) for item in recent],

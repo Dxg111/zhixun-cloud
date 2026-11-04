@@ -84,6 +84,7 @@ class ExportTaskListResponse(BaseModel):
 class DashboardResponse(BaseModel):
     pending_questions: int
     pending_cards: int
+    pending_join_requests: int
     active_exams: int
     completion_rate: int
     recent_exams: list[ExamItem]
