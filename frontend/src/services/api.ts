@@ -500,6 +500,7 @@ export interface EmployeeExamItem {
   score: number | null
   passed: boolean | null
   submitted_at: string | null
+  computed_state: 'pending' | 'in_progress' | 'done' | 'expired'
 }
 
 export interface EmployeeExamListResponse {

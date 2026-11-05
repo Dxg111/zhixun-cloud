@@ -31,8 +31,10 @@ export default function ExamDrawer({
 
   const footer = (
     <Space style={{ display: 'flex', justifyContent: 'flex-end' }} wrap>
-      {exam.status === 'draft' ? (
-        <Button onClick={() => onAssign(exam.id)}>指派范围</Button>
+      {exam.status === 'draft' || exam.status === 'published' ? (
+        <Button onClick={() => onAssign(exam.id)}>
+          {exam.status === 'published' ? '追加指派' : '指派范围'}
+        </Button>
       ) : null}
       {exam.status === 'draft' ? (
         <Button onClick={() => onCards(exam.id)}>关联知识卡</Button>

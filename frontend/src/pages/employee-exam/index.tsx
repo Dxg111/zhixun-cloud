@@ -38,10 +38,12 @@ export default function EmployeeExamPage() {
   const [answers, setAnswers] = useState<Record<number, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [remaining, setRemaining] = useState(0)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   const answersRef = useRef<Record<number, string[]>>({})
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const submittedRef = useRef(false)
+  const saveSeq = useRef(0)
 
   const questions = paper?.questions || []
   const currentQuestion = questions[currentIndex]
@@ -80,16 +82,25 @@ export default function EmployeeExamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId])
 
+  const persist = (attemptId: number) => {
+    const seq = ++saveSeq.current
+    setSaveState('saving')
+    saveEmployeeAnswers(attemptId, buildPayload(questions, answersRef.current))
+      .then(() => {
+        if (seq === saveSeq.current) setSaveState('saved')
+      })
+      .catch(() => {
+        if (seq === saveSeq.current) setSaveState('error')
+      })
+  }
+
   const flushSave = () => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current)
       saveTimer.current = null
     }
     if (!paper?.attempt_id || submittedRef.current) return
-    saveEmployeeAnswers(
-      paper.attempt_id,
-      buildPayload(questions, answersRef.current),
-    ).catch(() => {})
+    persist(paper.attempt_id)
   }
 
   useDidHide(() => {
@@ -148,10 +159,7 @@ export default function EmployeeExamPage() {
     saveTimer.current = setTimeout(() => {
       saveTimer.current = null
       if (!paper?.attempt_id || submittedRef.current) return
-      saveEmployeeAnswers(
-        paper.attempt_id,
-        buildPayload(questions, answersRef.current),
-      ).catch(() => {})
+      persist(paper.attempt_id)
     }, 500)
   }
 
@@ -246,6 +254,23 @@ export default function EmployeeExamPage() {
           </Text>
         </View>
       </View>
+
+      {saveState !== 'idle' && (
+        <View
+          className={`employee-save-state is-${saveState}`}
+          onClick={() => {
+            if (saveState === 'error' && paper.attempt_id) persist(paper.attempt_id)
+          }}
+        >
+          <Text>
+            {saveState === 'saving'
+              ? '保存中…'
+              : saveState === 'saved'
+                ? '答案已保存'
+                : '保存失败，点击重试'}
+          </Text>
+        </View>
+      )}
 
       <View className='employee-progress'>
         <View className='employee-progress-rail' />

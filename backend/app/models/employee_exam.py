@@ -42,6 +42,7 @@ class EmployeeExamItem(BaseModel):
     score: float | None = None
     passed: bool | None = None
     submitted_at: str | None = None
+    computed_state: Literal["pending", "in_progress", "done", "expired"] = "pending"
 
 
 class EmployeeExamListResponse(BaseModel):

@@ -296,6 +296,29 @@ async def mark_read_by_exam_ids(
             return max(int(cur.rowcount), 0)
 
 
+async def list_deadline_candidates(hours: int) -> list[tuple]:
+    """截止前 N 小时内、仍未提交的指派员工。"""
+    pool = get_mysql_pool()
+    if pool is None:
+        return []
+
+    safe_hours = max(1, int(hours))
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT e.tenant_code, e.id, e.title, e.end_at, a.employee_id "
+                "FROM exams e JOIN exam_assignments a ON a.exam_id = e.id "
+                "WHERE e.status = 'published' AND e.end_at IS NOT NULL "
+                "AND e.end_at > NOW() "
+                f"AND e.end_at <= DATE_ADD(NOW(), INTERVAL {safe_hours} HOUR) "
+                "AND NOT EXISTS (SELECT 1 FROM exam_attempts at "
+                "WHERE at.exam_id = e.id AND at.employee_id = a.employee_id "
+                "AND at.status = 'submitted') "
+                "ORDER BY e.id ASC, a.employee_id ASC",
+            )
+            return list(await cur.fetchall())
+
+
 async def count_bound_wechat(employee_ids: list[int]) -> int:
     """统计指派员工中已绑定微信的用户数。"""
     if not employee_ids:

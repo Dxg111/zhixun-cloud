@@ -127,9 +127,9 @@ export default function EmployeeExamsPage() {
   }
 
   const pendingCount = exams.filter(
-    (exam) => exam.status !== 'closed' && exam.attempt_status !== 'submitted',
+    (exam) => exam.computed_state === 'pending' || exam.computed_state === 'in_progress',
   ).length
-  const completedCount = exams.filter((exam) => exam.attempt_status === 'submitted').length
+  const completedCount = exams.filter((exam) => exam.computed_state === 'done').length
 
   return (
     <View className='employee-exams-page paper-bg'>
@@ -184,15 +184,15 @@ export default function EmployeeExamsPage() {
         ) : (
         <View className='employee-exam-list'>
           {exams.map((exam) => {
-            const submitted = exam.attempt_status === 'submitted'
-            const inProgress = exam.attempt_status === 'in_progress'
-            const closed = exam.status === 'closed'
+            const submitted = exam.computed_state === 'done'
+            const inProgress = exam.computed_state === 'in_progress'
+            const expired = exam.computed_state === 'expired'
             const actionText = submitted
               ? '查看成绩'
               : inProgress
                 ? '继续答题'
-                : closed
-                  ? '已结束'
+                : expired
+                  ? '已截止'
                   : '开始考试'
             return (
               <View
@@ -210,10 +210,10 @@ export default function EmployeeExamsPage() {
                   </View>
                   <Text
                     className={`employee-exam-status ${
-                      closed ? 'is-closed' : submitted ? 'is-done' : inProgress ? 'is-progress' : ''
+                      expired ? 'is-closed' : submitted ? 'is-done' : inProgress ? 'is-progress' : ''
                     }`}
                   >
-                    {closed ? '已结束' : submitted ? '已完成' : inProgress ? '进行中' : '待完成'}
+                    {expired ? '已截止' : submitted ? '已完成' : inProgress ? '进行中' : '待完成'}
                   </Text>
                 </View>
                 <View className='employee-exam-meta-row'>
@@ -256,10 +256,10 @@ export default function EmployeeExamsPage() {
                 </View>
                 <View
                   className={`employee-exam-action ${
-                    closed && !submitted && !inProgress ? 'is-disabled' : ''
+                    expired && !submitted && !inProgress ? 'is-disabled' : ''
                   }`}
                   onClick={() => {
-                    if (closed && !submitted && !inProgress) return
+                    if (expired && !submitted && !inProgress) return
                     openExam(exam)
                   }}
                 >

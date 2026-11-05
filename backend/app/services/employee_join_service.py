@@ -21,6 +21,7 @@ from app.repositories import (
     employee_join_repository,
     settings_repository,
 )
+from app.services import notification_service
 
 logger = structlog.get_logger()
 
@@ -210,6 +211,13 @@ async def approve_request(
     updated = await employee_join_repository.get_request(tenant_code, request_id)
     if updated is None:
         raise EmployeeJoinError("审核失败，请稍后重试")
+    await notification_service.notify_join_result(
+        tenant_code,
+        account["user_id"],
+        request_id,
+        approved=True,
+        tenant_name=account.get("tenant_name") or "",
+    )
     return _to_item(updated)
 
 
@@ -234,6 +242,13 @@ async def reject_request(
     updated = await employee_join_repository.get_request(tenant_code, request_id)
     if updated is None:
         raise EmployeeJoinError("审核失败，请稍后重试")
+    await notification_service.notify_join_result(
+        tenant_code,
+        account["user_id"],
+        request_id,
+        approved=False,
+        reject_reason=req.reason.strip(),
+    )
     return _to_item(updated)
 
 

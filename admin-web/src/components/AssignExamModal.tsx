@@ -1,4 +1,4 @@
-import { App as AntApp, Form, Modal, Radio, Select, Typography } from 'antd'
+import { Alert, App as AntApp, Form, Modal, Radio, Select, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import {
   getExamAssignments,
@@ -13,6 +13,7 @@ import {
 interface AssignExamModalProps {
   open: boolean
   examId: number | null
+  examStatus?: 'draft' | 'published' | 'closed'
   onCancel: () => void
   onSuccess: () => void
 }
@@ -26,6 +27,7 @@ interface AssignFormValues {
 export default function AssignExamModal({
   open,
   examId,
+  examStatus,
   onCancel,
   onSuccess,
 }: AssignExamModalProps) {
@@ -91,7 +93,12 @@ export default function AssignExamModal({
         org_ids: values.scope === 'org' ? values.org_ids || [] : [],
         employee_ids: values.scope === 'employees' ? values.employee_ids || [] : [],
       })
-      message.success(`指派已更新，共 ${result.assigned} 人`)
+      const added = result.added ?? 0
+      message.success(
+        added > 0
+          ? `指派已更新，共 ${result.assigned} 人，已通知新增的 ${added} 人`
+          : `指派已更新，共 ${result.assigned} 人`,
+      )
       onSuccess()
       onCancel()
     } catch (error) {
@@ -103,9 +110,9 @@ export default function AssignExamModal({
 
   return (
     <Modal
-      title="指派范围"
+      title={examStatus === 'published' ? '追加指派' : '指派范围'}
       open={open}
-      okText="保存指派"
+      okText={examStatus === 'published' ? '保存并通知' : '保存指派'}
       cancelText="取消"
       confirmLoading={submitting}
       onCancel={onCancel}
@@ -114,6 +121,16 @@ export default function AssignExamModal({
       destroyOnClose
       width={620}
     >
+      {examStatus === 'published' ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="考试已发布，只能追加指派"
+          description="已有员工不会被移除；新增的员工会收到新考试通知。"
+        />
+      ) : null}
+
       <Form
         form={form}
         layout="vertical"

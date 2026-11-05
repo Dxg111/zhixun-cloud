@@ -329,6 +329,7 @@ export default function ExamsPage() {
       <AssignExamModal
         open={assignExamId !== null}
         examId={assignExamId}
+        examStatus={selectedExam?.status}
         onCancel={() => setAssignExamId(null)}
         onSuccess={refreshSelectedExam}
       />

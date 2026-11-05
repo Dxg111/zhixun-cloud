@@ -225,6 +225,7 @@ export interface ExamAssignPayload {
 export interface ExamAssignResponse {
   assigned: number
   employee_ids: number[]
+  added?: number
 }
 
 export interface AdminExamListResponse {

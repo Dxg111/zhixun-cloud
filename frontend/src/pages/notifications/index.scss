@@ -1,0 +1,133 @@
+.notifications-page {
+  min-height: 100vh;
+  padding: 24px 32px 64px;
+}
+
+.notifications-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.notifications-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.notifications-tab {
+  padding: 8px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 24px;
+  line-height: 1.5;
+
+  &.is-active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--surface);
+  }
+}
+
+.notifications-read-all {
+  font-size: 23px;
+  color: var(--primary);
+
+  &.is-disabled {
+    color: var(--muted);
+    opacity: 0.5;
+  }
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.notification-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+
+  &.is-read {
+    opacity: 0.72;
+  }
+}
+
+.notification-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.notification-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.notification-dot {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.notification-title {
+  flex: 1;
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text-strong);
+}
+
+.notification-time {
+  flex-shrink: 0;
+  font-size: 20px;
+  color: var(--muted);
+}
+
+.notification-content {
+  display: block;
+  margin-top: 10px;
+  padding-left: 22px;
+  font-size: 23px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.notification-action {
+  display: block;
+  margin-top: 12px;
+  padding-left: 22px;
+  font-size: 22px;
+  color: var(--primary);
+}
+
+.notifications-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 120px 32px;
+  color: var(--muted);
+  font-size: 24px;
+  text-align: center;
+}
+
+.notifications-empty-mark {
+  font-size: 40px;
+  color: var(--line-strong);
+}
+
+.notifications-empty-hint {
+  font-size: 21px;
+  line-height: 1.6;
+}

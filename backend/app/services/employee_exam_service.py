@@ -23,6 +23,7 @@ from app.repositories import (
     employee_exam_repository,
     wrong_question_repository,
 )
+from app.services import notification_service, settings_service
 
 logger = structlog.get_logger()
 
@@ -64,6 +65,7 @@ async def list_exams(tenant_code: str, employee_id: int) -> EmployeeExamListResp
                 score=row["score"],
                 passed=row["passed"],
                 submitted_at=row["submitted_at"],
+                computed_state=row.get("computed_state", "pending"),
             )
             for row in rows
         ]
@@ -214,7 +216,43 @@ async def _finalize_submission(
             question_rows=question_rows,
             result=result,
         )
+        await _notify_result_ready(tenant_code, employee_id, attempt, result)
     return result, updated
+
+
+async def _notify_result_ready(
+    tenant_code: str,
+    employee_id: int,
+    attempt: dict,
+    result: EmployeeResultResponse,
+) -> None:
+    """成绩生成后通知员工；通知失败不影响判分。"""
+    try:
+        settings = await settings_service.get_settings(tenant_code)
+        if not settings.notify_result:
+            return
+        assignment = await employee_exam_repository.get_assignment(
+            tenant_code, attempt["exam_id"], employee_id
+        )
+        exam_title = (assignment or {}).get("title") or "考试"
+        await notification_service.notify_result_ready(
+            tenant_code,
+            attempt["exam_id"],
+            exam_title,
+            employee_id,
+            attempt["id"],
+            result.score,
+            result.passed,
+        )
+    except Exception as exc:
+        logger.error(
+            "result_notify_failed",
+            tenant_code=tenant_code,
+            employee_id=employee_id,
+            attempt_id=attempt.get("id"),
+            error=str(exc),
+            exc_info=True,
+        )
 
 
 async def _auto_submit_if_expired(

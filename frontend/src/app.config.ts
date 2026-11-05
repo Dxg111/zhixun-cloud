@@ -11,6 +11,7 @@ export default defineAppConfig({
     'pages/employee-result/index',
     'pages/employee-cards/index',
     'pages/employee-wrong/index',
+    'pages/notifications/index',
   ],
   networkTimeout: {
     request: 600000,

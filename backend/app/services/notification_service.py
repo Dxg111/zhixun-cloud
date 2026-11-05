@@ -112,6 +112,100 @@ async def notify_exam_assigned(
     )
 
 
+async def notify_result_ready(
+    tenant_code: str,
+    exam_id: int,
+    exam_title: str,
+    employee_id: int,
+    attempt_id: int,
+    score: float,
+    passed: bool,
+) -> int:
+    status_text = "已通过" if passed else "未通过，可重练错题后再考"
+    return await notify_recipients(
+        tenant_code,
+        RECIPIENT_EMPLOYEE,
+        [employee_id],
+        type="result_ready",
+        title=f"成绩已出：{exam_title}",
+        content=f"得分 {score} 分，{status_text}",
+        link_page="pages/employee-result/index",
+        link_params={"attemptId": attempt_id},
+        biz_type="attempt",
+        biz_id=attempt_id,
+    )
+
+
+async def notify_exam_closed(
+    tenant_code: str,
+    exam_id: int,
+    exam_title: str,
+    employee_ids: list[int],
+) -> int:
+    return await notify_recipients(
+        tenant_code,
+        RECIPIENT_EMPLOYEE,
+        employee_ids,
+        type="exam_closed",
+        title=f"考试已结束：{exam_title}",
+        content="该考试已由管理员关闭，未完成的场次不再计入待办",
+        link_page="pages/employee-exams/index",
+        biz_type="exam_closed",
+        biz_id=exam_id,
+    )
+
+
+async def notify_exam_deadline(
+    tenant_code: str,
+    exam_id: int,
+    exam_title: str,
+    employee_ids: list[int],
+    end_at: str,
+) -> int:
+    return await notify_recipients(
+        tenant_code,
+        RECIPIENT_EMPLOYEE,
+        employee_ids,
+        type="exam_deadline",
+        title=f"考试即将截止：{exam_title}",
+        content=f"请在 {end_at} 前完成考试",
+        link_page="pages/employee-exams/index",
+        biz_type="exam_deadline",
+        biz_id=exam_id,
+    )
+
+
+async def notify_join_result(
+    tenant_code: str,
+    user_id: int,
+    request_id: int,
+    *,
+    approved: bool,
+    tenant_name: str = "",
+    reject_reason: str = "",
+) -> int:
+    if approved:
+        title = f"已加入{tenant_name or '企业'}"
+        content = "审核已通过，现在可以进入企业培训查看考试"
+        biz_type = "join_approved"
+    else:
+        title = "加入申请未通过"
+        content = reject_reason or "如信息有误，可修改后重新提交申请"
+        biz_type = "join_rejected"
+
+    return await notify_recipients(
+        tenant_code,
+        RECIPIENT_USER,
+        [user_id],
+        type=biz_type,
+        title=title,
+        content=content,
+        link_page="pages/employee-login/index",
+        biz_type="join_request",
+        biz_id=request_id,
+    )
+
+
 async def list_summary(
     tenant_code: str, recipient_type: str, recipient_id: int
 ) -> NotificationSummary:

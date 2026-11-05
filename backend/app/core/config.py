@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     admin_display_name: str = "李培训"
     admin_jwt_expire_minutes: int = 480  # 管理员 8 小时
 
+    # 通知：截止提醒后台扫描
+    enable_deadline_reminder: bool = True
+    deadline_reminder_interval_seconds: int = 600
+    deadline_reminder_hours: int = 24
+
     # MySQL
     mysql_host: str = "localhost"
     mysql_port: int = 3306

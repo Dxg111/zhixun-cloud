@@ -1,5 +1,6 @@
 """FastAPI 应用入口"""
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -43,6 +44,7 @@ from app.core.exceptions import (
     ReportGenerationError,
 )
 from app.models.common import ApiResponse
+from app.services import deadline_reminder_service
 from app.services.employee_join_service import EmployeeJoinError
 
 logger = structlog.get_logger()
@@ -54,7 +56,19 @@ async def lifespan(app: FastAPI):
     logger.info("app_starting", host=settings.app_host, port=settings.app_port)
     if settings.mysql_auto_init:
         await init_mysql()
+
+    reminder_task: asyncio.Task | None = None
+    if settings.enable_deadline_reminder and settings.mysql_auto_init:
+        reminder_task = asyncio.create_task(deadline_reminder_service.run_loop())
+
     yield
+
+    if reminder_task is not None:
+        reminder_task.cancel()
+        try:
+            await reminder_task
+        except asyncio.CancelledError:
+            pass
     await close_mysql_pool()
     logger.info("app_shutting_down")
 

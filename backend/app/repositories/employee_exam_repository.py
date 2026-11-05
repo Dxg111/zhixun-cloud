@@ -43,7 +43,14 @@ async def list_exams_for_employee(tenant_code: str, employee_id: int) -> list[di
                 "WHERE a.employee_id = %s AND e.tenant_code = %s "
                 "AND e.status IN ('published', 'closed') "
                 "AND EXISTS (SELECT 1 FROM exam_questions q WHERE q.exam_id = e.id) "
-                "ORDER BY a.assigned_at DESC, e.id DESC",
+                # 待完成优先，其次按截止时间；已完成/已截止排后面
+                "ORDER BY CASE "
+                "  WHEN attempt_status = 'submitted' THEN 2 "
+                "  WHEN e.status = 'closed' THEN 3 "
+                "  WHEN e.end_at IS NOT NULL AND e.end_at < NOW() THEN 3 "
+                "  ELSE 0 END, "
+                "CASE WHEN e.end_at IS NULL THEN 1 ELSE 0 END, "
+                "e.end_at ASC, e.id DESC",
                 (
                     employee_id,
                     employee_id,
@@ -57,6 +64,7 @@ async def list_exams_for_employee(tenant_code: str, employee_id: int) -> list[di
             )
             rows = await cur.fetchall()
 
+    now = datetime.now()
     return [
         {
             "id": row[0],
@@ -75,9 +83,28 @@ async def list_exams_for_employee(tenant_code: str, employee_id: int) -> list[di
             "passed": bool(row[13]) if row[13] is not None else None,
             "submitted_at": _datetime_text(row[14]) or None,
             "attempt_count": int(row[15] or 0),
+            "computed_state": _computed_state(row[8], row[11], row[7], now),
         }
         for row in rows
     ]
+
+
+def _computed_state(
+    status: Any,
+    attempt_status: Any,
+    end_at: Any,
+    now: "datetime",
+) -> str:
+    """员工视角的考试状态，避免前端重复拼接规则。"""
+    if attempt_status == "submitted":
+        return "done"
+    if status == "closed":
+        return "expired"
+    if end_at is not None and end_at < now:
+        return "expired"
+    if attempt_status == "in_progress":
+        return "in_progress"
+    return "pending"
 
 
 async def get_assignment(tenant_code: str, exam_id: int, employee_id: int) -> Optional[dict]:

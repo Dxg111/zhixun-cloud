@@ -128,7 +128,10 @@ def create_employee_token(
 
 
 async def get_employee_context(request: Request) -> dict:
-    """员工鉴权依赖。"""
+    """员工鉴权依赖。
+
+    除校验 JWT 外，还会确认员工仍然在职：停用或离职后旧 token 立即失效。
+    """
     token = _extract_token(request)
     if not token:
         raise AuthenticationError()
@@ -138,4 +141,14 @@ async def get_employee_context(request: Request) -> dict:
         raise AuthenticationError("无员工访问权限")
     if not payload.get("employee_id") or not payload.get("tenant_code"):
         raise AuthenticationError("登录凭证缺少员工信息")
+
+    # 延迟导入，避免模块加载期的循环依赖
+    from app.repositories import admin_org_repository
+
+    employee = await admin_org_repository.get_employee(
+        payload["tenant_code"], int(payload["employee_id"])
+    )
+    if employee is None or employee["status"] != "active":
+        raise AuthenticationError("员工已停用或已离职，请联系企业管理员")
+
     return payload

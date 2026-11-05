@@ -307,6 +307,25 @@ async def list_assigned_employee_ids(exam_id: int) -> list[int]:
             return [int(row[0]) for row in await cur.fetchall()]
 
 
+async def list_incomplete_employee_ids(exam_id: int) -> list[int]:
+    """已指派但尚未提交的考试员工。"""
+    pool = get_mysql_pool()
+    if pool is None:
+        return []
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT a.employee_id FROM exam_assignments a "
+                "WHERE a.exam_id = %s AND NOT EXISTS ("
+                "SELECT 1 FROM exam_attempts at WHERE at.exam_id = a.exam_id "
+                "AND at.employee_id = a.employee_id AND at.status = 'submitted') "
+                "ORDER BY a.employee_id ASC",
+                (exam_id,),
+            )
+            return [int(row[0]) for row in await cur.fetchall()]
+
+
 async def replace_assignments(
     tenant_code: str,
     exam_id: int,

@@ -11,6 +11,7 @@ import {
   uploadUserAvatar,
 } from '../../services/api'
 import type { UserProfile, QuizHistoryItem } from '../../services/api'
+import { refreshNotificationSummary } from '../../services/notification'
 import './index.scss'
 
 export default function ProfilePage() {
@@ -21,6 +22,7 @@ export default function ProfilePage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [editing, setEditing] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const loadProfile = useCallback(() => {
     return getUserProfile()
@@ -48,6 +50,9 @@ export default function ProfilePage() {
   useDidShow(() => {
     loadProfile()
     loadHistory(1, true)
+    refreshNotificationSummary()
+      .then((summary) => setUnreadCount(summary?.unread_count ?? 0))
+      .catch(() => {})
   })
 
   const handleLoadMore = () => {
@@ -201,6 +206,24 @@ export default function ProfilePage() {
             </View>
             <Text className='knowledge-entry-arrow'>›</Text>
           </View>
+
+          {getEmployeeToken() ? (
+            <View
+              className='knowledge-entry'
+              onClick={() => Taro.navigateTo({ url: '/pages/notifications/index' })}
+            >
+              <View className='knowledge-entry-left'>
+                <View className='knowledge-entry-mark'>信</View>
+                <View className='knowledge-entry-body'>
+                  <Text className='knowledge-entry-text'>消息</Text>
+                  <Text className='knowledge-entry-desc'>
+                    {unreadCount > 0 ? `${unreadCount} 条未读通知` : '考试与审核通知'}
+                  </Text>
+                </View>
+              </View>
+              <Text className='knowledge-entry-arrow'>›</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* 闯关历史 */}

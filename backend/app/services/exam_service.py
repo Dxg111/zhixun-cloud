@@ -150,8 +150,8 @@ async def assign_exam(
     exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
     if exam is None:
         raise AdminExamError("考试不存在")
-    if exam["status"] != "draft":
-        raise AdminExamError("只有草稿考试可以调整指派")
+    if exam["status"] not in {"draft", "published"}:
+        raise AdminExamError("考试已关闭，不能调整指派")
 
     resolved_ids: list[int] = []
     if scope == "all":
@@ -176,10 +176,50 @@ async def assign_exam(
     if not resolved_ids:
         raise AdminExamError("指派对象为空或已停用，请重新选择")
 
+    if exam["status"] == "published":
+        # 已发布考试只做追加：保留已有指派，避免已参加考试的员工被移除
+        existing = await admin_exam_repository.list_assigned_employee_ids(exam_id)
+        merged = sorted(set(existing) | set(resolved_ids))
+        new_ids = sorted(set(merged) - set(existing))
+        assigned = await admin_exam_repository.replace_assignments(
+            tenant_code, exam_id, merged
+        )
+        if new_ids:
+            await _notify_assigned_added(tenant_code, exam_id, exam, new_ids)
+        return {"assigned": assigned, "employee_ids": merged, "added": len(new_ids)}
+
     assigned = await admin_exam_repository.replace_assignments(
         tenant_code, exam_id, resolved_ids
     )
-    return {"assigned": assigned, "employee_ids": resolved_ids}
+    return {"assigned": assigned, "employee_ids": resolved_ids, "added": 0}
+
+
+async def _notify_assigned_added(
+    tenant_code: str,
+    exam_id: int,
+    exam: dict,
+    employee_ids: list[int],
+) -> None:
+    try:
+        settings = await settings_service.get_settings(tenant_code)
+        if not settings.notify_assigned:
+            return
+        await notification_service.notify_exam_assigned(
+            tenant_code,
+            exam_id,
+            exam["title"],
+            employee_ids,
+            end_at=exam.get("end_at"),
+            question_count=exam.get("question_count"),
+        )
+    except Exception as exc:
+        logger.error(
+            "exam_assignment_notify_failed",
+            tenant_code=tenant_code,
+            exam_id=exam_id,
+            error=str(exc),
+            exc_info=True,
+        )
 
 
 async def get_notify_preview(tenant_code: str, exam_id: int) -> dict:
@@ -261,7 +301,28 @@ async def close_exam(tenant_code: str, exam_id: int) -> ExamItem:
     updated = await admin_exam_repository.get_exam(tenant_code, exam_id)
     if updated is None:
         raise AdminExamError("考试不存在")
+    await _notify_closed(tenant_code, exam_id, updated)
     return _to_item(updated)
+
+
+async def _notify_closed(tenant_code: str, exam_id: int, exam: dict) -> None:
+    """关闭考试后提醒尚未完成的员工；通知失败不影响关闭。"""
+    try:
+        settings = await settings_service.get_settings(tenant_code)
+        if not settings.notify_assigned:
+            return
+        employee_ids = await admin_exam_repository.list_incomplete_employee_ids(exam_id)
+        await notification_service.notify_exam_closed(
+            tenant_code, exam_id, exam["title"], employee_ids
+        )
+    except Exception as exc:
+        logger.error(
+            "exam_close_notify_failed",
+            tenant_code=tenant_code,
+            exam_id=exam_id,
+            error=str(exc),
+            exc_info=True,
+        )
 
 
 async def export_exam(
