@@ -40,4 +40,10 @@ temp_debug.png
 
 test-documents/
 prototypes/
-docs/
+# 内部草稿默认忽略，只跟踪 README 中对外引用的文档
+docs/*
+!docs/企业培训考核版需求分析文档.md
+!docs/企业方向转型实施方案.md
+!docs/三端交互优化方案.md
+!docs/方案设计文档.md
+!docs/人工测试发现的问题.md
