@@ -3,11 +3,13 @@ import type { ColumnsType } from 'antd/es/table'
 import { useCallback, useEffect, useState, type Key } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
+import EditQuestionModal from '../components/EditQuestionModal'
 import GenerateQuestionsModal from '../components/GenerateQuestionsModal'
 import QuestionDrawer from '../components/QuestionDrawer'
 import StatusTag from '../components/StatusTag'
 import {
   bulkReviewQuestions,
+  deleteAdminQuestion,
   getToken,
   listQuestionBanks,
   listQuestions,
@@ -57,7 +59,7 @@ function toDrawerQuestion(item: ApiQuestion): Question {
 }
 
 export default function QuestionsPage() {
-  const { message } = AntApp.useApp()
+  const { message, modal } = AntApp.useApp()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const keywordFromUrl = searchParams.get('keyword') || ''
@@ -79,6 +81,7 @@ export default function QuestionsPage() {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [generateOpen, setGenerateOpen] = useState(false)
+  const [editingQuestion, setEditingQuestion] = useState<ApiQuestion | null>(null)
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -204,18 +207,56 @@ export default function QuestionsPage() {
     },
     {
       title: '操作',
-      width: 90,
+      width: 190,
       render: (_, question) => (
-        <Button
-          type="link"
-          size="small"
-          onClick={(event) => {
-            event.stopPropagation()
-            openQuestion(question)
-          }}
-        >
-          {question.status === 'draft' ? '审核' : '查看'}
-        </Button>
+        <Space size={0}>
+          <Button
+            type="link"
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation()
+              openQuestion(question)
+            }}
+          >
+            {question.status === 'draft' ? '审核' : '查看'}
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation()
+              setEditingQuestion(question)
+            }}
+          >
+            编辑
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            danger
+            onClick={(event) => {
+              event.stopPropagation()
+              modal.confirm({
+                title: '删除题目？',
+                content: '删除后不会再出现在题库和组卷中，已发布考试的题目快照不受影响。',
+                okText: '删除',
+                okButtonProps: { danger: true },
+                cancelText: '取消',
+                onOk: async () => {
+                  try {
+                    await deleteAdminQuestion(question.id)
+                    message.success('题目已删除')
+                    await fetchQuestions()
+                  } catch (error) {
+                    handleError(error)
+                  }
+                },
+              })
+            }}
+          >
+            删除
+          </Button>
+        </Space>
       ),
     },
   ]
@@ -315,6 +356,16 @@ export default function QuestionsPage() {
         onSuccess={() => {
           setFilter('draft')
           setPage(1)
+        }}
+      />
+
+      <EditQuestionModal
+        open={editingQuestion !== null}
+        question={editingQuestion}
+        onCancel={() => setEditingQuestion(null)}
+        onSuccess={() => {
+          setDrawerOpen(false)
+          void fetchQuestions()
         }}
       />
 

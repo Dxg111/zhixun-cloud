@@ -39,6 +39,7 @@ export default function EmployeeExamPage() {
   const [loading, setLoading] = useState(true)
   const [remaining, setRemaining] = useState(0)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [cardOpen, setCardOpen] = useState(false)
 
   const answersRef = useRef<Record<number, string[]>>({})
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -209,6 +210,11 @@ export default function EmployeeExamPage() {
     [answers, currentQuestion],
   )
 
+  const answeredCount = useMemo(
+    () => questions.filter((question) => (answers[question.id] || []).length > 0).length,
+    [answers, questions],
+  )
+
   if (loading) {
     return (
       <View className='employee-exam-page paper-bg'>
@@ -312,6 +318,13 @@ export default function EmployeeExamPage() {
         </View>
       </View>
 
+      <View className='employee-answer-card-link' onClick={() => setCardOpen(true)}>
+        <Text>答题卡</Text>
+        <Text className='employee-answer-card-count'>
+          已答 {answeredCount} / {questions.length}
+        </Text>
+      </View>
+
       <View className='employee-exam-actions'>
         {currentIndex > 0 && (
           <View
@@ -338,6 +351,42 @@ export default function EmployeeExamPage() {
       <Text className='employee-exam-autosave'>
         答案已自动保存，倒计时结束后系统将自动交卷
       </Text>
+
+      {cardOpen && (
+        <View className='answer-card-mask' onClick={() => setCardOpen(false)}>
+          <View className='answer-card-panel' onClick={(event) => event.stopPropagation()}>
+            <View className='answer-card-head'>
+              <Text className='answer-card-title'>答题卡</Text>
+              <Text className='answer-card-close' onClick={() => setCardOpen(false)}>
+                关闭
+              </Text>
+            </View>
+            <View className='answer-card-summary'>
+              <Text>已答 {answeredCount}</Text>
+              <Text>未答 {questions.length - answeredCount}</Text>
+            </View>
+            <View className='answer-card-grid'>
+              {questions.map((question, index) => {
+                const answered = (answers[question.id] || []).length > 0
+                return (
+                  <View
+                    key={question.id}
+                    className={`answer-card-item ${answered ? 'is-answered' : ''} ${
+                      index === currentIndex ? 'is-current' : ''
+                    }`}
+                    onClick={() => {
+                      setCurrentIndex(index)
+                      setCardOpen(false)
+                    }}
+                  >
+                    <Text>{index + 1}</Text>
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

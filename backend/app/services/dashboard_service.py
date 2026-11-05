@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import structlog
+
 from app.models.admin_exam import DashboardResponse, DashboardTrendPoint, ExamItem
 from app.repositories import admin_exam_repository
+
+logger = structlog.get_logger()
 
 
 def _trend_label(exam: dict) -> str:
@@ -47,7 +51,31 @@ async def get_dashboard(tenant_code: str) -> DashboardResponse:
         for exam in trend_rows
     ]
 
-    # 目前成绩只存总分，没有逐题作答明细，薄弱知识点暂返回空。
+    # 取最近一场有提交成绩的考试，聚合薄弱知识点
+    weak_points: list[str] = []
+    source = next(
+        (exam for exam in reversed(trend_rows) if exam.get("completed", 0) > 0),
+        None,
+    )
+    if source is not None:
+        try:
+            from app.services import exam_service
+
+            analytics = await exam_service.get_exam_analytics(
+                tenant_code, source["id"]
+            )
+            weak_points = [
+                {"name": item["knowledge_point"], "value": item["accuracy"]}
+                for item in analytics["weak_points"][:5]
+            ]
+        except Exception as exc:  # 看板不因统计失败而不可用
+            logger.warning(
+                "dashboard_weak_points_failed",
+                tenant_code=tenant_code,
+                exam_id=source.get("id"),
+                error=str(exc),
+            )
+
     return DashboardResponse(
         pending_questions=counts["pending_questions"],
         pending_cards=counts["pending_cards"],
@@ -56,5 +84,5 @@ async def get_dashboard(tenant_code: str) -> DashboardResponse:
         completion_rate=counts["completion_rate"],
         recent_exams=[ExamItem(**item) for item in exams[:3]],
         trend=trend,
-        weak_points=[],
+        weak_points=weak_points,
     )

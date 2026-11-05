@@ -76,6 +76,7 @@ async def create_exam(
         start_at=req.start_at,
         end_at=req.end_at,
         created_by=created_by,
+        description=req.description,
     )
     exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
     if exam is None:
@@ -235,6 +236,142 @@ async def get_notify_preview(tenant_code: str, exam_id: int) -> dict:
 
     bound = await notification_repository.count_bound_wechat(employee_ids)
     return {"assigned": len(employee_ids), "bound_wechat": bound}
+
+
+async def get_exam_analytics(tenant_code: str, exam_id: int) -> dict:
+    """题目正确率、薄弱知识点、部门对比与平均分。"""
+    exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
+    if exam is None:
+        raise AdminExamError("考试不存在")
+
+    snapshots = await admin_exam_repository.list_exam_question_snapshots(exam_id)
+    attempts = await admin_exam_repository.list_submitted_attempts(tenant_code, exam_id)
+    assigned = await admin_exam_repository.list_assigned_employee_orgs(exam_id)
+
+    # 每个员工取最佳场次
+    best: dict[int, dict] = {}
+    for attempt in attempts:
+        current = best.get(attempt["employee_id"])
+        if current is None or attempt["score"] > current["score"]:
+            best[attempt["employee_id"]] = attempt
+
+    question_stats: dict[int, dict] = {
+        item["question_id"]: {
+            "question_id": item["question_id"],
+            "stem": (item["snapshot"].get("stem") or "")[:80],
+            "knowledge_point": item["snapshot"].get("knowledge_point") or "未标注",
+            "answered": 0,
+            "correct": 0,
+        }
+        for item in snapshots
+    }
+
+    snapshot_map = {item["question_id"]: item["snapshot"] for item in snapshots}
+    for attempt in best.values():
+        for answer in attempt["answers"]:
+            question_id = answer.get("question_id")
+            stat = question_stats.get(question_id)
+            if stat is None:
+                continue
+            snapshot = snapshot_map.get(question_id, {})
+            expected = sorted(snapshot.get("answer") or [])
+            selected = sorted(answer.get("selected") or [])
+            stat["answered"] += 1
+            if expected and selected == expected:
+                stat["correct"] += 1
+
+    question_accuracy = []
+    for stat in question_stats.values():
+        answered = stat["answered"]
+        question_accuracy.append(
+            {
+                **stat,
+                "accuracy": round(stat["correct"] / answered * 100) if answered else 0,
+            }
+        )
+    question_accuracy.sort(key=lambda item: (item["accuracy"], -item["answered"]))
+
+    # 薄弱知识点
+    point_stats: dict[str, dict] = {}
+    for item in question_accuracy:
+        point = point_stats.setdefault(
+            item["knowledge_point"],
+            {"knowledge_point": item["knowledge_point"], "answered": 0, "correct": 0},
+        )
+        point["answered"] += item["answered"]
+        point["correct"] += item["correct"]
+
+    weak_points = [
+        {
+            **point,
+            "accuracy": round(point["correct"] / point["answered"] * 100)
+            if point["answered"]
+            else 0,
+        }
+        for point in point_stats.values()
+    ]
+    weak_points.sort(key=lambda item: (item["accuracy"], -item["answered"]))
+
+    # 部门对比（按顶级部门归并）
+    best_ids = set(best.keys())
+    departments: dict[str, dict] = {}
+    for employee in assigned:
+        org_path = employee["org_path"] or "未分配部门"
+        top = org_path.split("/")[0] if org_path else "未分配部门"
+        bucket = departments.setdefault(
+            top,
+            {"org_path": top, "assigned": 0, "completed": 0, "passed": 0},
+        )
+        bucket["assigned"] += 1
+        attempt = best.get(employee["employee_id"])
+        if attempt is not None:
+            bucket["completed"] += 1
+            if attempt["passed"]:
+                bucket["passed"] += 1
+
+    department_list = []
+    for bucket in departments.values():
+        assigned_count = bucket["assigned"]
+        completed_count = bucket["completed"]
+        department_list.append(
+            {
+                **bucket,
+                "completion_rate": round(completed_count / assigned_count * 100)
+                if assigned_count
+                else 0,
+                "pass_rate": round(bucket["passed"] / completed_count * 100)
+                if completed_count
+                else 0,
+            }
+        )
+    department_list.sort(key=lambda item: item["org_path"])
+
+    scores = [attempt["score"] for attempt in best.values()]
+    return {
+        "avg_score": round(sum(scores) / len(scores), 1) if scores else 0,
+        "submitted_count": len(best),
+        "assigned_count": len(assigned),
+        "question_accuracy": question_accuracy,
+        "weak_points": weak_points[:10],
+        "departments": department_list,
+    }
+
+
+async def get_exam_attempts(
+    tenant_code: str, exam_id: int, page: int, page_size: int
+) -> dict:
+    exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
+    if exam is None:
+        raise AdminExamError("考试不存在")
+    items, total = await admin_exam_repository.list_attempt_details(
+        tenant_code, exam_id, page, page_size
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 async def get_notification_stats(tenant_code: str, exam_id: int) -> dict:

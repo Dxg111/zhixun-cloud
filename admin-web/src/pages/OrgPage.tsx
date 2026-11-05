@@ -25,10 +25,12 @@ import PageHeader from '../components/PageHeader'
 import StatusTag from '../components/StatusTag'
 import {
   createOrgUnit,
+  deleteOrgUnit,
   getToken,
   listEmployees,
   listOrgUnits,
   updateEmployeeStatus,
+  updateOrgUnit,
   type EmployeeItem,
   type OrgUnitItem,
 } from '../services/api'
@@ -68,7 +70,7 @@ function buildTree(orgs: OrgUnitItem[]): OrgTreeNode[] {
 }
 
 export default function OrgPage() {
-  const { message } = AntApp.useApp()
+  const { message, modal } = AntApp.useApp()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const keywordFromUrl = searchParams.get('keyword') || ''
@@ -83,7 +85,9 @@ export default function OrgPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [orgModalOpen, setOrgModalOpen] = useState(false)
+  const [editingOrg, setEditingOrg] = useState<OrgUnitItem | null>(null)
   const [orgForm] = Form.useForm<{ name: string; parent_id?: number }>()
+  const [editOrgForm] = Form.useForm<{ name: string; parent_id?: number }>()
 
   const treeData = useMemo<OrgTreeNode[]>(
     () => [
@@ -204,6 +208,54 @@ export default function OrgPage() {
     }
   }
 
+  const currentOrg = orgs.find((org) => org.id === selectedOrgId) || null
+
+  const openEditOrg = () => {
+    if (!currentOrg) return
+    setEditingOrg(currentOrg)
+    editOrgForm.setFieldsValue({
+      name: currentOrg.name,
+      parent_id: currentOrg.parent_id ?? undefined,
+    })
+  }
+
+  const handleUpdateOrg = async (values: { name: string; parent_id?: number }) => {
+    if (!editingOrg) return
+    try {
+      await updateOrgUnit(editingOrg.id, {
+        name: values.name,
+        parent_id: values.parent_id ?? null,
+      })
+      message.success('部门已更新')
+      setEditingOrg(null)
+      editOrgForm.resetFields()
+      await reload()
+    } catch (error) {
+      handleError(error)
+    }
+  }
+
+  const handleDeleteOrg = () => {
+    if (!currentOrg) return
+    modal.confirm({
+      title: `删除部门「${currentOrg.name}」？`,
+      content: '删除前需要先转移该部门员工，并删除所有下级部门。',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await deleteOrgUnit(currentOrg.id)
+          message.success('部门已删除')
+          setSelectedOrgId(null)
+          await reload()
+        } catch (error) {
+          handleError(error)
+        }
+      },
+    })
+  }
+
   const columns: ColumnsType<EmployeeItem> = [
     {
       title: '员工',
@@ -272,7 +324,21 @@ export default function OrgPage() {
 
       <Row gutter={[14, 14]}>
         <Col xs={24} lg={7} xl={6}>
-          <Card title="组织架构" className="panel-card" extra={<Typography.Text type="secondary">{total} 人</Typography.Text>}>
+          <Card
+            title="组织架构"
+            className="panel-card"
+            extra={
+              <Space size={4}>
+                <Typography.Text type="secondary">{total} 人</Typography.Text>
+                <Button size="small" disabled={!currentOrg} onClick={openEditOrg}>
+                  编辑
+                </Button>
+                <Button size="small" danger disabled={!currentOrg} onClick={handleDeleteOrg}>
+                  删除
+                </Button>
+              </Space>
+            }
+          >
             <Tree
               blockNode
               defaultExpandAll
@@ -335,6 +401,42 @@ export default function OrgPage() {
         onCancel={() => setImportOpen(false)}
         onSuccess={reload}
       />
+
+      <Modal
+        title="编辑部门"
+        open={editingOrg !== null}
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => {
+          setEditingOrg(null)
+          editOrgForm.resetFields()
+        }}
+        onOk={() => editOrgForm.submit()}
+      >
+        <Form
+          form={editOrgForm}
+          layout="vertical"
+          onFinish={handleUpdateOrg}
+          requiredMark={false}
+        >
+          <Form.Item
+            name="name"
+            label="部门名称"
+            rules={[{ required: true, message: '请输入部门名称' }]}
+          >
+            <Input placeholder="例如：华东区" />
+          </Form.Item>
+          <Form.Item name="parent_id" label="上级部门">
+            <Select
+              allowClear
+              placeholder="不选则为顶级部门"
+              options={orgs
+                .filter((org) => org.id !== editingOrg?.id)
+                .map((org) => ({ label: org.path, value: org.id }))}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title="新增部门"

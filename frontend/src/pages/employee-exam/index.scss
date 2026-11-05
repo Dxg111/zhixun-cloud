@@ -289,3 +289,92 @@
   color: var(--faint);
   font-size: 26px;
 }
+
+.employee-answer-card-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 14px;
+  padding: 16px 22px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 23px;
+  color: var(--primary);
+}
+
+.employee-answer-card-count {
+  font-size: 21px;
+  color: var(--muted);
+}
+
+.answer-card-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(27, 33, 27, 0.45);
+}
+
+.answer-card-panel {
+  width: 100%;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 28px 32px 40px;
+  padding-bottom: calc(40px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  background: var(--surface);
+}
+
+.answer-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.answer-card-title {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.answer-card-close {
+  font-size: 23px;
+  color: var(--primary);
+}
+
+.answer-card-summary {
+  display: flex;
+  gap: 24px;
+  margin: 14px 0 20px;
+  font-size: 21px;
+  color: var(--muted);
+}
+
+.answer-card-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+.answer-card-item {
+  display: grid;
+  place-items: center;
+  height: 76px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-size: 24px;
+  color: var(--muted);
+
+  &.is-answered {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  &.is-current {
+    box-shadow: inset 0 0 0 3px var(--primary);
+  }
+}

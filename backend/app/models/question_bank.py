@@ -64,6 +64,15 @@ class QuestionReviewRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class QuestionUpdateRequest(BaseModel):
+    stem: str = Field(min_length=1, max_length=2000)
+    options: list[QuestionOption] = Field(min_length=2, max_length=8)
+    answer: list[str] = Field(min_length=1, max_length=8)
+    explanation: str = Field(default="", max_length=2000)
+    knowledge_point: str = Field(default="", max_length=200)
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
+
+
 class QuestionBulkReviewRequest(BaseModel):
     ids: list[int] = Field(min_length=1, max_length=100)
     action: Literal["approve", "reject"]
@@ -84,4 +93,5 @@ class GenerateQuestionsResponse(BaseModel):
     created: int
     bank_id: int
     bank_name: str
+    skipped_duplicates: int = 0
 

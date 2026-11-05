@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.routes import (
     admin_accounts,
+    admin_audit,
     admin_documents,
     admin_exams,
     admin_join_requests,
@@ -98,6 +99,7 @@ app.mount("/media/avatars", StaticFiles(directory=str(_avatar_dir)), name="avata
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(admin_accounts.router, prefix="/api/v1")
+app.include_router(admin_audit.router, prefix="/api/v1")
 app.include_router(admin_questions.router, prefix="/api/v1")
 app.include_router(admin_search.router, prefix="/api/v1")
 app.include_router(admin_knowledge_cards.router, prefix="/api/v1")

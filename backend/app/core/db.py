@@ -176,6 +176,7 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
         review_note VARCHAR(500) NULL,
         reviewed_by VARCHAR(64) NULL,
         reviewed_at DATETIME NULL,
+        deleted_at DATETIME NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
@@ -304,6 +305,7 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         tenant_code VARCHAR(64) NOT NULL DEFAULT 'demo',
         title VARCHAR(255) NOT NULL,
+        description TEXT NULL,
         bank_id BIGINT UNSIGNED NOT NULL,
         question_count INT NOT NULL DEFAULT 5,
         pass_score INT NOT NULL DEFAULT 60,
@@ -392,6 +394,7 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
         status VARCHAR(20) NOT NULL DEFAULT 'processing',
         row_count INT NOT NULL DEFAULT 0,
         file_path VARCHAR(500) NULL,
+        expires_at DATETIME NULL,
         created_by VARCHAR(64) NULL,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
@@ -521,6 +524,22 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        tenant_code VARCHAR(64) NOT NULL DEFAULT 'demo',
+        operator_id VARCHAR(64) NOT NULL DEFAULT '',
+        operator_name VARCHAR(100) NOT NULL DEFAULT '',
+        action VARCHAR(50) NOT NULL,
+        target_type VARCHAR(50) NOT NULL DEFAULT '',
+        target_id VARCHAR(64) NOT NULL DEFAULT '',
+        detail_json JSON NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_audit_tenant_created (tenant_code, created_at),
+        KEY idx_audit_action (tenant_code, action, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """,
+    """
     CREATE TABLE IF NOT EXISTS wechat_subscriptions (
         user_id BIGINT UNSIGNED NOT NULL,
         template_id VARCHAR(64) NOT NULL,
@@ -635,6 +654,24 @@ async def init_mysql() -> None:
                 "employees",
                 "notify_deadline",
                 "ALTER TABLE employees ADD COLUMN notify_deadline TINYINT(1) NOT NULL DEFAULT 1 AFTER status",
+            )
+            await _ensure_column(
+                cursor,
+                "questions",
+                "deleted_at",
+                "ALTER TABLE questions ADD COLUMN deleted_at DATETIME NULL AFTER reviewed_at",
+            )
+            await _ensure_column(
+                cursor,
+                "exams",
+                "description",
+                "ALTER TABLE exams ADD COLUMN description TEXT NULL AFTER title",
+            )
+            await _ensure_column(
+                cursor,
+                "export_tasks",
+                "expires_at",
+                "ALTER TABLE export_tasks ADD COLUMN expires_at DATETIME NULL AFTER file_path",
             )
 
     logger.info("mysql_initialized", database=settings.mysql_database)

@@ -9,7 +9,7 @@ from app.models.auth import (
     AdminStatusUpdateRequest,
 )
 from app.models.common import ApiResponse
-from app.services import admin_user_service
+from app.services import admin_user_service, audit_service
 
 router = APIRouter(prefix="/admin/admins", tags=["admin"])
 
@@ -26,6 +26,14 @@ async def create_admin_account(
     context: dict = Depends(get_admin_context),
 ):
     result = await admin_user_service.create_admin(context["tenant_code"], req)
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "admin.create",
+        target_type="admin",
+        target_id=result.id,
+        detail={"login_name": result.login_name, "role": result.role},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -39,6 +47,13 @@ async def reset_admin_password(
         tenant_code=context["tenant_code"],
         admin_id=admin_id,
         new_password=req.new_password,
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "admin.reset_password",
+        target_type="admin",
+        target_id=admin_id,
     )
     return ApiResponse.success(data=result.model_dump())
 
@@ -54,5 +69,13 @@ async def update_admin_account_status(
         admin_id=admin_id,
         status=req.status,
         actor_login_name=context.get("login_name", ""),
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "admin.status",
+        target_type="admin",
+        target_id=admin_id,
+        detail={"status": req.status},
     )
     return ApiResponse.success(data=result.model_dump())

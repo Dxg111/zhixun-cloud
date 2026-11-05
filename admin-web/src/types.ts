@@ -39,6 +39,8 @@ export interface Exam {
   endsAt: string
   questionCount: number
   cardViewRate: number
+  avgScore?: number
+  description?: string | null
   cardTitles?: string[]
   distribution: number[]
   weakPoints: string[]

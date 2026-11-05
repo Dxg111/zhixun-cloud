@@ -363,3 +363,88 @@ async def list_active_employee_ids(tenant_code: str) -> list[int]:
             )
             rows = await cur.fetchall()
             return [int(row[0]) for row in rows]
+
+
+async def update_org(
+    tenant_code: str,
+    org_id: int,
+    name: str,
+    parent_id: int | None,
+    path: str,
+) -> int:
+    pool = get_mysql_pool()
+    if pool is None:
+        raise RuntimeError("数据库未初始化，无法更新部门")
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE org_units SET name = %s, parent_id = %s, path = %s "
+                "WHERE tenant_code = %s AND id = %s",
+                (name, parent_id, path, tenant_code, org_id),
+            )
+            return int(cur.rowcount)
+
+
+async def rewrite_descendant_paths(
+    tenant_code: str,
+    old_path: str,
+    new_path: str,
+) -> int:
+    """把 old_path/ 前缀替换为 new_path/，用于部门改名或移动。"""
+    pool = get_mysql_pool()
+    if pool is None:
+        raise RuntimeError("数据库未初始化，无法更新部门")
+
+    prefix_length = len(old_path) + 1
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE org_units SET path = CONCAT(%s, SUBSTRING(path, %s)) "
+                "WHERE tenant_code = %s AND path LIKE %s",
+                (new_path, prefix_length, tenant_code, f"{old_path}/%"),
+            )
+            return int(cur.rowcount)
+
+
+async def count_org_children(tenant_code: str, org_id: int) -> int:
+    pool = get_mysql_pool()
+    if pool is None:
+        return 0
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COUNT(*) FROM org_units WHERE tenant_code = %s AND parent_id = %s",
+                (tenant_code, org_id),
+            )
+            return int((await cur.fetchone())[0])
+
+
+async def delete_org(tenant_code: str, org_id: int) -> int:
+    pool = get_mysql_pool()
+    if pool is None:
+        raise RuntimeError("数据库未初始化，无法删除部门")
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "DELETE FROM org_units WHERE tenant_code = %s AND id = %s",
+                (tenant_code, org_id),
+            )
+            return int(cur.rowcount)
+
+
+async def count_org_employees(tenant_code: str, org_id: int) -> int:
+    pool = get_mysql_pool()
+    if pool is None:
+        return 0
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COUNT(*) FROM employees "
+                "WHERE tenant_code = %s AND org_id = %s AND status = 'active'",
+                (tenant_code, org_id),
+            )
+            return int((await cur.fetchone())[0])

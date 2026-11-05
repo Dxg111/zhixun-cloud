@@ -13,6 +13,7 @@ import ExportsPage from './pages/ExportsPage'
 import SearchPage from './pages/SearchPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminUsersPage from './pages/AdminUsersPage'
+import AuditLogsPage from './pages/AuditLogsPage'
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/exams" element={<ExamsPage />} />
         <Route path="/exports" element={<ExportsPage />} />
         <Route path="/admins" element={<AdminUsersPage />} />
+        <Route path="/audit-logs" element={<AuditLogsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

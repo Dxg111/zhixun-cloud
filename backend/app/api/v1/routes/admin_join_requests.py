@@ -8,7 +8,7 @@ from app.models.employee_join import (
     JoinRequestApproveRequest,
     JoinRequestRejectRequest,
 )
-from app.services import employee_join_service
+from app.services import audit_service, employee_join_service
 
 router = APIRouter(prefix="/admin/join-requests", tags=["admin"])
 
@@ -41,6 +41,14 @@ async def approve_join_request(
         admin_name=context.get("display_name") or context.get("login_name") or "管理员",
         req=req,
     )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "join.approve",
+        target_type="join_request",
+        target_id=request_id,
+        detail={"name": result.name, "employee_no": result.employee_no},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -55,5 +63,13 @@ async def reject_join_request(
         request_id=request_id,
         admin_name=context.get("display_name") or context.get("login_name") or "管理员",
         req=req,
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "join.reject",
+        target_type="join_request",
+        target_id=request_id,
+        detail={"name": result.name, "reason": req.reason},
     )
     return ApiResponse.success(data=result.model_dump())

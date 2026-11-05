@@ -11,7 +11,7 @@ from app.models.knowledge_card import (
     KnowledgeCardStatusRequest,
     KnowledgeCardUpdateRequest,
 )
-from app.services import knowledge_card_service
+from app.services import audit_service, knowledge_card_service
 
 router = APIRouter(prefix="/admin/knowledge-cards", tags=["admin"])
 
@@ -44,6 +44,13 @@ async def generate_knowledge_cards(
         req=req,
         created_by=context.get("login_name", ""),
     )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "card.generate",
+        target_type="knowledge_card",
+        detail={"doc_id": req.doc_id, "card_count": getattr(result, "created", None)},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -67,6 +74,14 @@ async def update_knowledge_card(
     result = await knowledge_card_service.update_card(
         context["tenant_code"], card_id, req
     )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "card.update",
+        target_type="knowledge_card",
+        target_id=card_id,
+        detail={"title": result.title},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -80,5 +95,13 @@ async def update_knowledge_card_status(
         tenant_code=context["tenant_code"],
         card_id=card_id,
         status=req.status,
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "card.status",
+        target_type="knowledge_card",
+        target_id=card_id,
+        detail={"status": req.status, "title": result.title},
     )
     return ApiResponse.success(data=result.model_dump())

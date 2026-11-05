@@ -12,6 +12,7 @@ from app.models.question_bank import (
     QuestionBulkReviewResponse,
     QuestionCounts,
     QuestionListResponse,
+    QuestionUpdateRequest,
 )
 from app.repositories import question_repository
 
@@ -113,6 +114,78 @@ async def bulk_review(
         reviewer=reviewer,
     )
     return QuestionBulkReviewResponse(updated=updated)
+
+
+def _validate_question_options(
+    question_type: str, options: list, answer: list[str]
+) -> list[str]:
+    keys = [option.key for option in options]
+    if len(set(keys)) != len(keys):
+        raise QuestionError("选项 key 不能重复")
+    if any(not key.strip() for key in keys):
+        raise QuestionError("选项 key 不能为空")
+
+    normalized_answer = sorted({item for item in answer if item})
+    if not normalized_answer:
+        raise QuestionError("请设置正确答案")
+    if not set(normalized_answer).issubset(set(keys)):
+        raise QuestionError("答案必须是选项 key 的子集")
+
+    if question_type == "single" and len(normalized_answer) != 1:
+        raise QuestionError("单选题只能有 1 个正确答案")
+    if question_type == "multiple" and len(normalized_answer) < 2:
+        raise QuestionError("多选题至少需要 2 个正确答案")
+    if question_type == "judge" and set(keys) != {"A", "B"}:
+        raise QuestionError("判断题只能有 A、B 两个选项")
+    return normalized_answer
+
+
+async def update_question(
+    tenant_code: str,
+    question_id: int,
+    req: QuestionUpdateRequest,
+) -> AdminQuestionItem:
+    question = await question_repository.get_question(tenant_code, question_id)
+    if question is None:
+        raise QuestionError("题目不存在")
+
+    answer = _validate_question_options(
+        question["type"], req.options, req.answer
+    )
+    updated = await question_repository.update_question(
+        tenant_code=tenant_code,
+        question_id=question_id,
+        stem=req.stem.strip(),
+        options=[option.model_dump() for option in req.options],
+        answer=answer,
+        explanation=req.explanation.strip(),
+        knowledge_point=req.knowledge_point.strip(),
+        difficulty=req.difficulty,
+    )
+    if updated == 0:
+        raise QuestionError("题目不存在或已删除")
+
+    refreshed = await question_repository.get_question(tenant_code, question_id)
+    if refreshed is None:
+        raise QuestionError("题目更新失败")
+    logger.info(
+        "question_updated", tenant_code=tenant_code, question_id=question_id
+    )
+    return _to_item(refreshed)
+
+
+async def delete_question(tenant_code: str, question_id: int) -> None:
+    question = await question_repository.get_question(tenant_code, question_id)
+    if question is None:
+        raise QuestionError("题目不存在")
+    deleted = await question_repository.soft_delete_question(
+        tenant_code, question_id
+    )
+    if deleted == 0:
+        raise QuestionError("题目不存在或已删除")
+    logger.info(
+        "question_deleted", tenant_code=tenant_code, question_id=question_id
+    )
 
 
 async def list_banks(tenant_code: str) -> QuestionBankListResponse:

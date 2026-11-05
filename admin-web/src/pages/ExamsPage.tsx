@@ -39,6 +39,8 @@ function toDrawerExam(detail: AdminExamDetail): Exam {
     endsAt: detail.end_at || '未设置',
     questionCount: detail.question_count,
     cardViewRate: detail.card_view_rate,
+    avgScore: detail.avg_score ?? 0,
+    description: detail.description ?? null,
     cardTitles: detail.card_titles ?? [],
     distribution: detail.distribution,
     weakPoints: detail.weak_points,

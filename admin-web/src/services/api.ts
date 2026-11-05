@@ -206,6 +206,8 @@ export interface AdminExam {
   pass_rate: number
   card_view_rate: number
   created_at: string
+  avg_score?: number
+  description?: string | null
 }
 
 export interface AdminExamDetail extends AdminExam {
@@ -489,6 +491,111 @@ export function reviewQuestion(
   })
 }
 
+export interface AdminQuestionUpdatePayload {
+  stem: string
+  options: QuestionOption[]
+  answer: string[]
+  explanation: string
+  knowledge_point: string
+  difficulty: 'easy' | 'medium' | 'hard'
+}
+
+export function updateAdminQuestion(id: number, payload: AdminQuestionUpdatePayload) {
+  return request<ApiQuestion>(`/admin/questions/${id}`, { method: 'PUT', body: payload })
+}
+
+export function deleteAdminQuestion(id: number) {
+  return request<null>(`/admin/questions/${id}`, { method: 'DELETE' })
+}
+
+export interface AuditLogItem {
+  id: number
+  operator_name: string
+  action: string
+  target_type: string
+  target_id: string
+  detail: string
+  created_at: string
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export function listAuditLogs(params: { action?: string; page?: number; page_size?: number } = {}) {
+  const query = new URLSearchParams()
+  if (params.action) query.set('action', params.action)
+  query.set('page', String(params.page ?? 1))
+  query.set('page_size', String(params.page_size ?? 20))
+  return request<AuditLogListResponse>(`/admin/audit-logs?${query.toString()}`)
+}
+
+export interface ExamQuestionAccuracy {
+  question_id: number
+  stem: string
+  knowledge_point: string
+  answered: number
+  correct: number
+  accuracy: number
+}
+
+export interface ExamDepartmentStat {
+  org_path: string
+  assigned: number
+  completed: number
+  passed: number
+  completion_rate: number
+  pass_rate: number
+}
+
+export interface ExamAnalytics {
+  avg_score: number
+  submitted_count: number
+  assigned_count: number
+  question_accuracy: ExamQuestionAccuracy[]
+  weak_points: ExamQuestionAccuracy[]
+  departments: ExamDepartmentStat[]
+}
+
+export interface ExamAttemptDetail {
+  employee_id: number
+  employee_no: string
+  name: string
+  org_path: string
+  best_score: number | null
+  passed: boolean | null
+  submitted_at: string | null
+  attempt_count: number
+}
+
+export interface ExamAttemptListResponse {
+  items: ExamAttemptDetail[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export function getExamAnalytics(examId: number) {
+  return request<ExamAnalytics>(`/admin/exams/${examId}/analytics`)
+}
+
+export function listExamAttempts(examId: number, page = 1, pageSize = 20) {
+  return request<ExamAttemptListResponse>(
+    `/admin/exams/${examId}/attempts?page=${page}&page_size=${pageSize}`,
+  )
+}
+
+export function updateOrgUnit(id: number, payload: { name: string; parent_id?: number | null }) {
+  return request<OrgUnitItem>(`/admin/org-units/${id}`, { method: 'PUT', body: payload })
+}
+
+export function deleteOrgUnit(id: number) {
+  return request<null>(`/admin/org-units/${id}`, { method: 'DELETE' })
+}
+
 export function bulkReviewQuestions(
   ids: number[],
   action: 'approve' | 'reject',
@@ -712,6 +819,7 @@ export function listAdminExams(params: {
 
 export function createAdminExam(payload: {
   title: string
+  description?: string | null
   bank_name: string
   question_count: number
   pass_score: number

@@ -16,6 +16,7 @@ from app.models.admin_org import (
     OrgUnitCreateRequest,
     OrgUnitItem,
     OrgUnitListResponse,
+    OrgUnitUpdateRequest,
 )
 from app.repositories import admin_org_repository
 
@@ -86,6 +87,74 @@ async def create_org_unit(tenant_code: str, req: OrgUnitCreateRequest) -> OrgUni
     if org is None:
         raise AdminOrgError("创建部门失败")
     return _to_org_item(org)
+
+
+async def update_org_unit(
+    tenant_code: str, org_id: int, req: OrgUnitUpdateRequest
+) -> OrgUnitItem:
+    org = await admin_org_repository.get_org(tenant_code, org_id)
+    if org is None:
+        raise AdminOrgError("部门不存在")
+
+    name = req.name.strip()
+    if not name:
+        raise AdminOrgError("部门名称不能为空")
+
+    parent_path = ""
+    if req.parent_id is not None:
+        if req.parent_id == org_id:
+            raise AdminOrgError("不能把部门设置为自己的上级")
+        parent = await admin_org_repository.get_org(tenant_code, req.parent_id)
+        if parent is None:
+            raise AdminOrgError("上级部门不存在")
+        if parent["path"] == org["path"] or parent["path"].startswith(
+            f"{org['path']}/"
+        ):
+            raise AdminOrgError("不能移动到自己的下级部门")
+        parent_path = parent["path"]
+
+    old_path = org["path"]
+    new_path = f"{parent_path}/{name}" if parent_path else name
+    if new_path != old_path:
+        existing = await admin_org_repository.find_org_by_path(tenant_code, new_path)
+        if existing is not None and existing["id"] != org_id:
+            raise AdminOrgError("同级下已存在同名部门")
+
+    updated = await admin_org_repository.update_org(
+        tenant_code=tenant_code,
+        org_id=org_id,
+        name=name,
+        parent_id=req.parent_id,
+        path=new_path,
+    )
+    if updated == 0:
+        raise AdminOrgError("部门不存在")
+
+    if new_path != old_path:
+        await admin_org_repository.rewrite_descendant_paths(
+            tenant_code, old_path, new_path
+        )
+
+    refreshed = await admin_org_repository.get_org(tenant_code, org_id)
+    if refreshed is None:
+        raise AdminOrgError("更新部门失败")
+    return _to_org_item(refreshed)
+
+
+async def delete_org_unit(tenant_code: str, org_id: int) -> None:
+    org = await admin_org_repository.get_org(tenant_code, org_id)
+    if org is None:
+        raise AdminOrgError("部门不存在")
+
+    children = await admin_org_repository.count_org_children(tenant_code, org_id)
+    if children > 0:
+        raise AdminOrgError("请先删除或转移下级部门")
+
+    employees = await admin_org_repository.count_org_employees(tenant_code, org_id)
+    if employees > 0:
+        raise AdminOrgError("请先把该部门员工转移到其他部门")
+
+    await admin_org_repository.delete_org(tenant_code, org_id)
 
 
 async def list_employees(

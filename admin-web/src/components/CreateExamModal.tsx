@@ -40,6 +40,7 @@ type SubmitMode = 'draft' | 'publish'
 
 interface ExamFormValues {
   title: string
+  description?: string
   bank: string
   questionCount: number
   passScore: number
@@ -131,6 +132,7 @@ export default function CreateExamModal({
     try {
       const exam = await createAdminExam({
         title: values.title,
+        description: values.description?.trim() || null,
         bank_name: values.bank,
         question_count: values.questionCount,
         pass_score: values.passScore,
@@ -233,6 +235,19 @@ export default function CreateExamModal({
           scope: 'all',
         }}
       >
+        <Form.Item
+          name="description"
+          label="考试说明（可选）"
+          rules={[{ max: 2000, message: '不超过 2000 字' }]}
+        >
+          <Input.TextArea
+            rows={2}
+            maxLength={2000}
+            showCount
+            placeholder="例如：本次复训覆盖开闭店流程，请在 30 分钟内完成"
+          />
+        </Form.Item>
+
         <Form.Item name="title" label="考试名称" rules={[{ required: true, message: '请输入考试名称' }]}>
           <Input />
         </Form.Item>

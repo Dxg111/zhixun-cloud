@@ -7,9 +7,10 @@ from app.models.admin_org import (
     EmployeeCreateRequest,
     EmployeeStatusRequest,
     OrgUnitCreateRequest,
+    OrgUnitUpdateRequest,
 )
 from app.models.common import ApiResponse
-from app.services import admin_org_service
+from app.services import admin_org_service, audit_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -26,7 +27,48 @@ async def create_org_unit(
     context: dict = Depends(get_admin_context),
 ):
     result = await admin_org_service.create_org_unit(context["tenant_code"], req)
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "org.create",
+        target_type="org_unit",
+        target_id=result.id,
+        detail={"name": result.name, "path": result.path},
+    )
     return ApiResponse.success(data=result.model_dump())
+
+
+@router.put("/org-units/{org_id}", response_model=ApiResponse)
+async def update_org_unit(
+    org_id: int,
+    req: OrgUnitUpdateRequest,
+    context: dict = Depends(get_admin_context),
+):
+    result = await admin_org_service.update_org_unit(
+        context["tenant_code"], org_id, req
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "org.update",
+        target_type="org_unit",
+        target_id=org_id,
+        detail={"name": result.name, "path": result.path},
+    )
+    return ApiResponse.success(data=result.model_dump())
+
+
+@router.delete("/org-units/{org_id}", response_model=ApiResponse)
+async def delete_org_unit(org_id: int, context: dict = Depends(get_admin_context)):
+    await admin_org_service.delete_org_unit(context["tenant_code"], org_id)
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "org.delete",
+        target_type="org_unit",
+        target_id=org_id,
+    )
+    return ApiResponse.success()
 
 
 @router.get("/employees", response_model=ApiResponse)
@@ -53,6 +95,14 @@ async def create_employee(
     context: dict = Depends(get_admin_context),
 ):
     result = await admin_org_service.create_employee(context["tenant_code"], req)
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "employee.create",
+        target_type="employee",
+        target_id=result.id,
+        detail={"employee_no": result.employee_no, "name": result.name},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -67,6 +117,13 @@ async def import_employees(
         filename=file.filename or "employees.xlsx",
         content=content,
     )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "employee.import",
+        target_type="employee",
+        detail={"imported": result.imported, "skipped": result.skipped},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -80,5 +137,13 @@ async def update_employee_status(
         tenant_code=context["tenant_code"],
         employee_id=employee_id,
         status=req.status,
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "employee.status",
+        target_type="employee",
+        target_id=employee_id,
+        detail={"status": req.status},
     )
     return ApiResponse.success(data=result.model_dump())

@@ -53,6 +53,17 @@ async def upload_document(
         raise AdminOrgError("文件不能超过 20MB")
 
     settings = get_settings()
+    usage = await admin_document_repository.get_document_usage(tenant_code)
+    if usage["count"] >= settings.kb_max_documents_per_tenant:
+        raise AdminOrgError(
+            f"文档数量已达上限（{settings.kb_max_documents_per_tenant} 篇），请先删除旧文档"
+        )
+    max_bytes = settings.kb_max_storage_mb_per_tenant * 1024 * 1024
+    if usage["bytes"] + len(content) > max_bytes:
+        raise AdminOrgError(
+            f"存储空间不足（上限 {settings.kb_max_storage_mb_per_tenant}MB），请先删除旧文档"
+        )
+
     upload_dir = os.path.join(settings.kb_upload_dir, "admin")
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, f"{uuid.uuid4().hex}.{extension}")

@@ -63,7 +63,7 @@ def _build_filters(
     include_status: bool,
     bank_id: int | None = None,
 ) -> tuple[str, list[Any]]:
-    clauses = ["q.tenant_code = %s"]
+    clauses = ["q.tenant_code = %s", "q.deleted_at IS NULL"]
     params: list[Any] = [tenant_code]
 
     if include_status and status != "all":
@@ -210,11 +210,64 @@ async def get_question(tenant_code: str, question_id: int) -> Optional[dict]:
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                f"{QUESTION_SELECT} WHERE q.tenant_code = %s AND q.id = %s",
+                f"{QUESTION_SELECT} WHERE q.tenant_code = %s AND q.id = %s "
+                "AND q.deleted_at IS NULL",
                 (tenant_code, question_id),
             )
             row = await cur.fetchone()
             return _to_question(row) if row else None
+
+
+async def update_question(
+    tenant_code: str,
+    question_id: int,
+    stem: str,
+    options: list[dict],
+    answer: list[str],
+    explanation: str,
+    knowledge_point: str,
+    difficulty: str,
+) -> int:
+    """编辑题目；已通过的题目编辑后回到草稿，需要重新审核。"""
+    pool = get_mysql_pool()
+    if pool is None:
+        raise RuntimeError("数据库未初始化，无法编辑题目")
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE questions SET stem = %s, options_json = %s, answer_json = %s, "
+                "explanation = %s, knowledge_point = %s, difficulty = %s, "
+                "status = 'draft', reviewed_by = NULL, reviewed_at = NULL, "
+                "review_note = NULL "
+                "WHERE tenant_code = %s AND id = %s AND deleted_at IS NULL",
+                (
+                    stem,
+                    json.dumps(options, ensure_ascii=False),
+                    json.dumps(answer, ensure_ascii=False),
+                    explanation,
+                    knowledge_point,
+                    difficulty,
+                    tenant_code,
+                    question_id,
+                ),
+            )
+            return int(cur.rowcount)
+
+
+async def soft_delete_question(tenant_code: str, question_id: int) -> int:
+    pool = get_mysql_pool()
+    if pool is None:
+        raise RuntimeError("数据库未初始化，无法删除题目")
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE questions SET deleted_at = NOW() "
+                "WHERE tenant_code = %s AND id = %s AND deleted_at IS NULL",
+                (tenant_code, question_id),
+            )
+            return int(cur.rowcount)
 
 
 async def review_question(
@@ -273,8 +326,10 @@ async def list_banks(tenant_code: str) -> list[dict]:
             await cur.execute(
                 "SELECT b.id, b.name, b.description, "
                 "(SELECT COUNT(*) FROM questions q "
-                " WHERE q.bank_id = b.id AND q.status = 'approved') AS approved_count, "
-                "(SELECT COUNT(*) FROM questions q WHERE q.bank_id = b.id) AS total_count "
+                " WHERE q.bank_id = b.id AND q.status = 'approved' "
+                "AND q.deleted_at IS NULL) AS approved_count, "
+                "(SELECT COUNT(*) FROM questions q WHERE q.bank_id = b.id "
+                "AND q.deleted_at IS NULL) AS total_count "
                 "FROM question_banks b WHERE b.tenant_code = %s ORDER BY b.id ASC",
                 (tenant_code,),
             )
@@ -290,3 +345,19 @@ async def list_banks(tenant_code: str) -> list[dict]:
         }
         for row in rows
     ]
+
+
+async def list_question_stems(tenant_code: str, bank_id: int) -> list[str]:
+    """用于生成时去重的已有题干。"""
+    pool = get_mysql_pool()
+    if pool is None:
+        return []
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT stem FROM questions "
+                "WHERE tenant_code = %s AND bank_id = %s AND deleted_at IS NULL",
+                (tenant_code, bank_id),
+            )
+            return [row[0] for row in await cur.fetchall()]

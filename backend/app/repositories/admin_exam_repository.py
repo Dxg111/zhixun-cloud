@@ -25,7 +25,10 @@ SELECT e.id, e.tenant_code, e.title, e.bank_id, b.name AS bank_name,
         JOIN exam_knowledge_cards ekc ON ekc.card_id = v.card_id
         JOIN exam_assignments ea ON ea.exam_id = ekc.exam_id AND ea.employee_id = v.employee_id
         WHERE ekc.exam_id = e.id AND v.tenant_code = e.tenant_code) AS card_viewers,
-       e.created_at
+       e.created_at,
+       (SELECT ROUND(AVG(at.score), 1) FROM exam_attempts at
+        WHERE at.exam_id = e.id AND at.status = 'submitted') AS avg_score,
+       e.description
 FROM exams e
 JOIN question_banks b ON e.bank_id = b.id
 """
@@ -64,6 +67,8 @@ def _to_exam(row: tuple) -> dict:
         "pass_rate": pass_rate,
         "card_view_rate": card_view_rate,
         "created_at": _datetime_text(row[16]),
+        "avg_score": float(row[17]) if row[17] is not None else 0.0,
+        "description": row[18] if len(row) > 18 else None,
     }
 
 
@@ -163,6 +168,7 @@ async def create_exam(
     start_at: str | None,
     end_at: str | None,
     created_by: str,
+    description: str | None = None,
 ) -> int:
     pool = get_mysql_pool()
     if pool is None:
@@ -172,12 +178,13 @@ async def create_exam(
         async with conn.cursor() as cur:
             await cur.execute(
                 "INSERT INTO exams "
-                "(tenant_code, title, bank_id, question_count, pass_score, duration_minutes, "
-                "max_attempts, start_at, end_at, status, created_by) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft', %s)",
+                "(tenant_code, title, description, bank_id, question_count, pass_score, "
+                "duration_minutes, max_attempts, start_at, end_at, status, created_by) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft', %s)",
                 (
                     tenant_code,
                     title,
+                    description,
                     bank_id,
                     question_count,
                     pass_score,
@@ -217,6 +224,7 @@ async def publish_exam(tenant_code: str, exam_id: int) -> int:
                     "SELECT id, type, stem, options_json, answer_json, explanation, "
                     "knowledge_point, difficulty, source_ref FROM questions "
                     "WHERE tenant_code = %s AND bank_id = %s AND status = 'approved' "
+                    "AND deleted_at IS NULL "
                     "ORDER BY id ASC LIMIT %s",
                     (tenant_code, bank_id, question_count),
                 )
@@ -563,3 +571,143 @@ async def dashboard_counts(tenant_code: str) -> dict:
         "active_exams": active_exams,
         "completion_rate": round(completed / assigned * 100) if assigned else 0,
     }
+
+
+async def list_attempt_details(
+    tenant_code: str, exam_id: int, page: int, page_size: int
+) -> tuple[list[dict], int]:
+    """员工成绩明细，按员工聚合最佳成绩。"""
+    pool = get_mysql_pool()
+    if pool is None:
+        return [], 0
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COUNT(*) FROM exam_assignments WHERE exam_id = %s", (exam_id,)
+            )
+            total = int((await cur.fetchone())[0])
+
+            offset = max(page - 1, 0) * page_size
+            await cur.execute(
+                "SELECT e.id, e.employee_no, e.name, COALESCE(o.path, ''), "
+                "MAX(CASE WHEN at.status = 'submitted' THEN at.score END) AS best_score, "
+                "MAX(CASE WHEN at.status = 'submitted' AND at.passed = 1 THEN 1 ELSE 0 END) AS passed, "
+                "MAX(CASE WHEN at.status = 'submitted' THEN at.submitted_at END) AS submitted_at, "
+                "COUNT(CASE WHEN at.status = 'submitted' THEN 1 END) AS attempt_count "
+                "FROM exam_assignments asg "
+                "JOIN employees e ON e.id = asg.employee_id "
+                "LEFT JOIN org_units o ON o.id = e.org_id "
+                "LEFT JOIN exam_attempts at ON at.exam_id = asg.exam_id "
+                "AND at.employee_id = e.id "
+                "WHERE asg.exam_id = %s "
+                "GROUP BY e.id, e.employee_no, e.name, o.path "
+                "ORDER BY best_score IS NULL, best_score DESC, e.id ASC "
+                "LIMIT %s OFFSET %s",
+                (exam_id, page_size, offset),
+            )
+            rows = await cur.fetchall()
+
+    return (
+        [
+            {
+                "employee_id": int(row[0]),
+                "employee_no": row[1],
+                "name": row[2],
+                "org_path": row[3] or "",
+                "best_score": float(row[4]) if row[4] is not None else None,
+                "passed": bool(row[5]) if row[4] is not None else None,
+                "submitted_at": _datetime_text(row[6]) or None,
+                "attempt_count": int(row[7] or 0),
+            }
+            for row in rows
+        ],
+        total,
+    )
+
+
+async def list_exam_question_snapshots(exam_id: int) -> list[dict]:
+    pool = get_mysql_pool()
+    if pool is None:
+        return []
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT question_id, snapshot_json, score FROM exam_questions "
+                "WHERE exam_id = %s ORDER BY sort ASC",
+                (exam_id,),
+            )
+            rows = await cur.fetchall()
+
+    result = []
+    for row in rows:
+        snapshot = row[1]
+        if isinstance(snapshot, str):
+            try:
+                snapshot = json.loads(snapshot)
+            except ValueError:
+                snapshot = {}
+        result.append(
+            {
+                "question_id": int(row[0]) if row[0] is not None else None,
+                "snapshot": snapshot or {},
+                "score": float(row[2] or 0),
+            }
+        )
+    return result
+
+
+async def list_submitted_attempts(tenant_code: str, exam_id: int) -> list[dict]:
+    pool = get_mysql_pool()
+    if pool is None:
+        return []
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT at.employee_id, at.score, at.passed, at.answers_json, at.submitted_at "
+                "FROM exam_attempts at JOIN exams e ON e.id = at.exam_id "
+                "WHERE at.exam_id = %s AND e.tenant_code = %s AND at.status = 'submitted' "
+                "ORDER BY at.id ASC",
+                (exam_id, tenant_code),
+            )
+            rows = await cur.fetchall()
+
+    result = []
+    for row in rows:
+        answers = row[3]
+        if isinstance(answers, str):
+            try:
+                answers = json.loads(answers)
+            except ValueError:
+                answers = []
+        result.append(
+            {
+                "employee_id": int(row[0]),
+                "score": float(row[1]) if row[1] is not None else 0.0,
+                "passed": bool(row[2]),
+                "answers": answers or [],
+                "submitted_at": row[4],
+            }
+        )
+    return result
+
+
+async def list_assigned_employee_orgs(exam_id: int) -> list[dict]:
+    pool = get_mysql_pool()
+    if pool is None:
+        return []
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT e.id, COALESCE(o.path, '') FROM exam_assignments a "
+                "JOIN employees e ON e.id = a.employee_id "
+                "LEFT JOIN org_units o ON o.id = e.org_id "
+                "WHERE a.exam_id = %s",
+                (exam_id,),
+            )
+            rows = await cur.fetchall()
+
+    return [{"employee_id": int(row[0]), "org_path": row[1] or ""} for row in rows]

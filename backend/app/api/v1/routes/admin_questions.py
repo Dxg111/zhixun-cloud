@@ -6,8 +6,12 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.auth import get_admin_context
 from app.models.common import ApiResponse
-from app.models.question_bank import QuestionBulkReviewRequest, QuestionReviewRequest
-from app.services import question_service
+from app.models.question_bank import (
+    QuestionBulkReviewRequest,
+    QuestionReviewRequest,
+    QuestionUpdateRequest,
+)
+from app.services import audit_service, question_service
 
 router = APIRouter(prefix="/admin/questions", tags=["admin"])
 
@@ -38,6 +42,42 @@ async def list_admin_question_banks(context: dict = Depends(get_admin_context)):
     return ApiResponse.success(data=result.model_dump())
 
 
+@router.put("/{question_id}", response_model=ApiResponse)
+async def update_admin_question(
+    question_id: int,
+    req: QuestionUpdateRequest,
+    context: dict = Depends(get_admin_context),
+):
+    result = await question_service.update_question(
+        context["tenant_code"], question_id, req
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "question.update",
+        target_type="question",
+        target_id=question_id,
+        detail={"stem": result.stem[:80], "status": result.status},
+    )
+    return ApiResponse.success(data=result.model_dump())
+
+
+@router.delete("/{question_id}", response_model=ApiResponse)
+async def delete_admin_question(
+    question_id: int,
+    context: dict = Depends(get_admin_context),
+):
+    await question_service.delete_question(context["tenant_code"], question_id)
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "question.delete",
+        target_type="question",
+        target_id=question_id,
+    )
+    return ApiResponse.success()
+
+
 @router.post("/{question_id}/review", response_model=ApiResponse)
 async def review_admin_question(
     question_id: int,
@@ -50,6 +90,14 @@ async def review_admin_question(
         action=req.action,
         note=req.note,
         reviewer=context.get("login_name", ""),
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "question.review",
+        target_type="question",
+        target_id=question_id,
+        detail={"action": req.action, "note": req.note},
     )
     return ApiResponse.success(data=result.model_dump())
 
@@ -65,5 +113,13 @@ async def bulk_review_admin_questions(
         action=req.action,
         note=req.note,
         reviewer=context.get("login_name", ""),
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "question.bulk_review",
+        target_type="question",
+        target_id=",".join(str(item) for item in req.ids[:20]),
+        detail={"action": req.action, "count": len(req.ids)},
     )
     return ApiResponse.success(data=result.model_dump())

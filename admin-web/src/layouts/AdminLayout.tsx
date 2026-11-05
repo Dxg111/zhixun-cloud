@@ -50,6 +50,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/exams': '考试管理',
   '/exports': '导出中心',
   '/admins': '管理员',
+  '/audit-logs': '审计日志',
   '/settings': '设置',
 }
 
@@ -128,6 +129,7 @@ function buildMenuItems(
       label: '系统',
       children: [
         { key: '/admins', icon: <TeamOutlined />, label: '管理员' },
+        { key: '/audit-logs', icon: <FileDoneOutlined />, label: '审计日志' },
         { key: '/settings', icon: <SettingOutlined />, label: '设置' },
       ],
     },

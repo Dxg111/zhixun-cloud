@@ -23,6 +23,8 @@ class ExamItem(BaseModel):
     pass_rate: int
     card_view_rate: int
     created_at: str
+    avg_score: float = 0.0
+    description: str | None = None
 
 
 class ExamListResponse(BaseModel):
@@ -35,6 +37,7 @@ class ExamListResponse(BaseModel):
 
 class ExamCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=2000)
     bank_name: str = Field(min_length=1, max_length=200)
     question_count: int = Field(default=5, ge=1, le=100)
     pass_score: int = Field(default=60, ge=0, le=100)
@@ -74,6 +77,7 @@ class ExportTaskItem(BaseModel):
     status: Literal["processing", "ready", "failed"]
     rows: int
     created_at: str
+    expires_at: str = ""
 
 
 class ExportTaskListResponse(BaseModel):

@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     avatar_upload_dir: str = "./data/avatars"
     kb_max_documents_per_user: int = 10
     kb_max_file_size_mb: int = 10
+    # 企业管理后台知识库配额
+    kb_max_documents_per_tenant: int = 200
+    kb_max_storage_mb_per_tenant: int = 2048
+    # 管理员登录失败限流
+    admin_login_max_failures: int = 5
+    admin_login_lock_seconds: int = 60
     kb_chunk_size: int = 1000
     kb_chunk_overlap: int = 150
     kb_retrieve_top_k: int = 4

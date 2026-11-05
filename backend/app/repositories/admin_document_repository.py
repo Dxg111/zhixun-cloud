@@ -120,3 +120,19 @@ async def delete_document(tenant_code: str, doc_id: int) -> None:
                 "DELETE FROM admin_documents WHERE tenant_code = %s AND id = %s",
                 (tenant_code, doc_id),
             )
+
+
+async def get_document_usage(tenant_code: str) -> dict:
+    pool = get_mysql_pool()
+    if pool is None:
+        return {"count": 0, "bytes": 0}
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COUNT(*), COALESCE(SUM(file_size), 0) FROM admin_documents "
+                "WHERE tenant_code = %s",
+                (tenant_code,),
+            )
+            row = await cur.fetchone()
+    return {"count": int(row[0] or 0), "bytes": int(row[1] or 0)}

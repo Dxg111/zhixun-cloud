@@ -22,6 +22,7 @@ def _to_task(row: tuple) -> dict:
         "rows": row[6],
         "file_path": row[7],
         "created_at": _datetime_text(row[8]),
+        "expires_at": _datetime_text(row[9]) if len(row) > 9 else "",
     }
 
 
@@ -34,7 +35,7 @@ async def list_tasks(tenant_code: str) -> list[dict]:
         async with conn.cursor() as cur:
             await cur.execute(
                 "SELECT id, tenant_code, exam_id, file_name, export_type, status, row_count, "
-                "file_path, created_at FROM export_tasks "
+                "file_path, created_at, expires_at FROM export_tasks "
                 "WHERE tenant_code = %s ORDER BY created_at DESC, id DESC",
                 (tenant_code,),
             )
@@ -51,7 +52,7 @@ async def get_task(tenant_code: str, task_id: int) -> Optional[dict]:
         async with conn.cursor() as cur:
             await cur.execute(
                 "SELECT id, tenant_code, exam_id, file_name, export_type, status, row_count, "
-                "file_path, created_at FROM export_tasks "
+                "file_path, created_at, expires_at FROM export_tasks "
                 "WHERE tenant_code = %s AND id = %s",
                 (tenant_code, task_id),
             )
@@ -77,8 +78,9 @@ async def create_task(
         async with conn.cursor() as cur:
             await cur.execute(
                 "INSERT INTO export_tasks "
-                "(tenant_code, exam_id, file_name, export_type, status, row_count, file_path, created_by) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                "(tenant_code, exam_id, file_name, export_type, status, row_count, file_path, "
+                "expires_at, created_by) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, DATE_ADD(NOW(), INTERVAL 24 HOUR), %s)",
                 (tenant_code, exam_id, file_name, export_type, status, rows, file_path, created_by),
             )
             return int(cur.lastrowid)

@@ -1,6 +1,7 @@
 """考试、导出、工作台路由"""
 
 import os
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -14,7 +15,7 @@ from app.models.admin_exam import (
     ExamKnowledgeCardsRequest,
 )
 from app.models.common import ApiResponse
-from app.services import dashboard_service, exam_service
+from app.services import audit_service, dashboard_service, exam_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -53,6 +54,14 @@ async def create_exam(
         req=req,
         created_by=context.get("login_name", ""),
     )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "exam.create",
+        target_type="exam",
+        target_id=result.id,
+        detail={"title": result.title, "question_count": result.question_count},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -82,6 +91,14 @@ async def set_exam_knowledge_cards(
     cards = await exam_service.set_exam_knowledge_cards(
         context["tenant_code"], exam_id, req.card_ids
     )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "exam.set_cards",
+        target_type="exam",
+        target_id=exam_id,
+        detail={"card_ids": req.card_ids},
+    )
     return ApiResponse.success(data=[card.model_dump() for card in cards])
 
 
@@ -107,6 +124,37 @@ async def assign_exam(
         req.org_ids,
         req.employee_ids,
     )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "exam.assign",
+        target_type="exam",
+        target_id=exam_id,
+        detail={
+            "scope": req.scope,
+            "assigned": result.get("assigned"),
+            "added": result.get("added", 0),
+        },
+    )
+    return ApiResponse.success(data=result)
+
+
+@router.get("/exams/{exam_id}/analytics", response_model=ApiResponse)
+async def get_exam_analytics(exam_id: int, context: dict = Depends(get_admin_context)):
+    result = await exam_service.get_exam_analytics(context["tenant_code"], exam_id)
+    return ApiResponse.success(data=result)
+
+
+@router.get("/exams/{exam_id}/attempts", response_model=ApiResponse)
+async def list_exam_attempts(
+    exam_id: int,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    context: dict = Depends(get_admin_context),
+):
+    result = await exam_service.get_exam_attempts(
+        context["tenant_code"], exam_id, page, page_size
+    )
     return ApiResponse.success(data=result)
 
 
@@ -125,12 +173,28 @@ async def get_notify_preview(exam_id: int, context: dict = Depends(get_admin_con
 @router.post("/exams/{exam_id}/publish", response_model=ApiResponse)
 async def publish_exam(exam_id: int, context: dict = Depends(get_admin_context)):
     result = await exam_service.publish_exam(context["tenant_code"], exam_id)
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "exam.publish",
+        target_type="exam",
+        target_id=exam_id,
+        detail={"title": result.title, "assigned": result.assigned},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
 @router.post("/exams/{exam_id}/close", response_model=ApiResponse)
 async def close_exam(exam_id: int, context: dict = Depends(get_admin_context)):
     result = await exam_service.close_exam(context["tenant_code"], exam_id)
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "exam.close",
+        target_type="exam",
+        target_id=exam_id,
+        detail={"title": result.title},
+    )
     return ApiResponse.success(data=result.model_dump())
 
 
@@ -140,6 +204,14 @@ async def export_exam(exam_id: int, context: dict = Depends(get_admin_context)):
         tenant_code=context["tenant_code"],
         exam_id=exam_id,
         created_by=context.get("login_name", ""),
+    )
+    await audit_service.record(
+        context["tenant_code"],
+        context,
+        "exam.export",
+        target_type="exam",
+        target_id=exam_id,
+        detail={"task_id": result.id, "file_name": result.file_name},
     )
     return ApiResponse.success(data=result.model_dump())
 
@@ -153,6 +225,15 @@ async def list_exports(context: dict = Depends(get_admin_context)):
 @router.get("/exports/{task_id}/download")
 async def download_export(task_id: int, context: dict = Depends(get_admin_context)):
     task = await exam_service.get_export_task(context["tenant_code"], task_id)
+    expires_at = task.get("expires_at")
+    if expires_at:
+        try:
+            expired = datetime.strptime(expires_at, "%Y-%m-%d %H:%M:%S") < datetime.now()
+        except ValueError:
+            expired = False
+        if expired:
+            raise AdminExamError("导出文件已过期，请重新导出")
+
     file_path = task.get("file_path")
     if not file_path or not os.path.exists(file_path):
         raise AdminExamError("导出文件不存在或已过期")

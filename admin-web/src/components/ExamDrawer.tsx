@@ -1,6 +1,27 @@
-import { Button, Col, Drawer, List, Progress, Row, Space, Statistic, Typography } from 'antd'
+import {
+  Button,
+  Col,
+  Collapse,
+  Drawer,
+  List,
+  Progress,
+  Row,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { useEffect, useState } from 'react'
 import type { Exam } from '../types'
-import type { ExamNotificationStats } from '../services/api'
+import {
+  getExamAnalytics,
+  listExamAttempts,
+  type ExamAnalytics,
+  type ExamAttemptDetail,
+  type ExamNotificationStats,
+} from '../services/api'
 import StatusTag from './StatusTag'
 
 interface ExamDrawerProps {
@@ -28,9 +49,72 @@ export default function ExamDrawer({
   onAssign,
   onCards,
 }: ExamDrawerProps) {
+  const [analytics, setAnalytics] = useState<ExamAnalytics | null>(null)
+  const [attempts, setAttempts] = useState<ExamAttemptDetail[]>([])
+  const [attemptsTotal, setAttemptsTotal] = useState(0)
+  const [attemptPage, setAttemptPage] = useState(1)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !exam) return
+    let cancelled = false
+    setAttemptPage(1)
+    setDetailLoading(true)
+    Promise.all([
+      getExamAnalytics(Number(exam.id)).catch(() => null),
+      listExamAttempts(Number(exam.id), 1, 10).catch(() => null),
+    ])
+      .then(([analyticsData, attemptData]) => {
+        if (cancelled) return
+        setAnalytics(analyticsData)
+        setAttempts(attemptData?.items ?? [])
+        setAttemptsTotal(attemptData?.total ?? 0)
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, exam?.id])
+
+  const loadAttemptPage = async (page: number) => {
+    if (!exam) return
+    setDetailLoading(true)
+    try {
+      const data = await listExamAttempts(Number(exam.id), page, 10)
+      setAttempts(data.items)
+      setAttemptsTotal(data.total)
+      setAttemptPage(page)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
   if (!exam) return null
 
   const maxCount = Math.max(...exam.distribution, 1)
+
+  const attemptColumns: ColumnsType<ExamAttemptDetail> = [
+    { title: '工号', dataIndex: 'employee_no', width: 90 },
+    { title: '姓名', dataIndex: 'name', width: 100 },
+    { title: '部门', dataIndex: 'org_path', ellipsis: true },
+    {
+      title: '分数',
+      dataIndex: 'best_score',
+      width: 70,
+      render: (value: number | null) => (value == null ? '—' : value),
+    },
+    {
+      title: '结果',
+      dataIndex: 'passed',
+      width: 70,
+      render: (value: boolean | null) =>
+        value == null ? '—' : value ? <Tag color="green">通过</Tag> : <Tag color="red">未通过</Tag>,
+    },
+    { title: '提交时间', dataIndex: 'submitted_at', width: 160, render: (value: string | null) => value || '—' },
+    { title: '场次', dataIndex: 'attempt_count', width: 60 },
+  ]
 
   const footer = (
     <Space style={{ display: 'flex', justifyContent: 'flex-end' }} wrap>
@@ -75,6 +159,12 @@ export default function ExamDrawer({
           </Typography.Text>
         </Space>
 
+        {exam.description ? (
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+            {exam.description}
+          </Typography.Paragraph>
+        ) : null}
+
         <Row gutter={[12, 12]}>
           <Col span={12}>
             <Statistic title="指派人数" value={exam.assigned} />
@@ -90,6 +180,12 @@ export default function ExamDrawer({
               title="知识卡查看率"
               value={exam.cardViewRate}
               suffix="%"
+            />
+          </Col>
+          <Col span={12}>
+            <Statistic
+              title="平均分"
+              value={analytics?.avg_score ?? exam.avgScore ?? 0}
             />
           </Col>
         </Row>
@@ -182,6 +278,93 @@ export default function ExamDrawer({
             </Typography.Paragraph>
           )}
         </div>
+
+        <Collapse
+          items={[
+            {
+              key: 'attempts',
+              label: `成绩明细（${attemptsTotal} 人）`,
+              children: (
+                <Table
+                  size="small"
+                  rowKey="employee_id"
+                  columns={attemptColumns}
+                  dataSource={attempts}
+                  loading={detailLoading}
+                  pagination={{
+                    current: attemptPage,
+                    pageSize: 10,
+                    total: attemptsTotal,
+                    showSizeChanger: false,
+                    onChange: (page) => void loadAttemptPage(page),
+                  }}
+                  scroll={{ x: 720 }}
+                />
+              ),
+            },
+            {
+              key: 'questions',
+              label: '题目正确率',
+              children: analytics?.question_accuracy.length ? (
+                <Table
+                  size="small"
+                  rowKey="question_id"
+                  dataSource={analytics.question_accuracy}
+                  pagination={{ pageSize: 10, hideOnSinglePage: true }}
+                  scroll={{ x: 560 }}
+                  columns={[
+                    { title: '题目', dataIndex: 'stem', ellipsis: true },
+                    { title: '知识点', dataIndex: 'knowledge_point', width: 110 },
+                    { title: '作答', dataIndex: 'answered', width: 60 },
+                    {
+                      title: '正确率',
+                      dataIndex: 'accuracy',
+                      width: 80,
+                      render: (value: number) => (
+                        <Tag color={value < 60 ? 'red' : value < 80 ? 'gold' : 'green'}>
+                          {value}%
+                        </Tag>
+                      ),
+                    },
+                  ]}
+                />
+              ) : (
+                <Typography.Text type="secondary">暂无作答数据</Typography.Text>
+              ),
+            },
+            {
+              key: 'departments',
+              label: '部门对比',
+              children: analytics?.departments.length ? (
+                <Table
+                  size="small"
+                  rowKey="org_path"
+                  dataSource={analytics.departments}
+                  pagination={false}
+                  columns={[
+                    { title: '部门', dataIndex: 'org_path' },
+                    { title: '指派', dataIndex: 'assigned', width: 70 },
+                    { title: '完成', dataIndex: 'completed', width: 70 },
+                    {
+                      title: '完成率',
+                      dataIndex: 'completion_rate',
+                      width: 90,
+                      render: (value: number) => `${value}%`,
+                    },
+                    {
+                      title: '通过率',
+                      dataIndex: 'pass_rate',
+                      width: 90,
+                      render: (value: number) => `${value}%`,
+                    },
+                  ]}
+                />
+              ) : (
+                <Typography.Text type="secondary">暂无部门数据</Typography.Text>
+              ),
+            },
+          ]}
+        />
       </Space>
     </Drawer>
   )
