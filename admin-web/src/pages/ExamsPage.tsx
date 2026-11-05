@@ -13,11 +13,13 @@ import {
   downloadExportTask,
   exportAdminExam,
   getAdminExam,
+  getExamNotifyPreview,
   getToken,
   listAdminExams,
   publishAdminExam,
   type AdminExam,
   type AdminExamDetail,
+  type ExamNotifyPreview,
 } from '../services/api'
 import type { Exam } from '../types'
 
@@ -42,7 +44,7 @@ function toDrawerExam(detail: AdminExamDetail): Exam {
 }
 
 export default function ExamsPage() {
-  const { message } = AntApp.useApp()
+  const { message, modal } = AntApp.useApp()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const keywordFromUrl = searchParams.get('keyword') || ''
@@ -116,9 +118,40 @@ export default function ExamsPage() {
   }, [selectedExam, handleError, loadExams])
 
   const handlePublish = async (id: string) => {
+    let preview: ExamNotifyPreview
+    try {
+      preview = await getExamNotifyPreview(Number(id))
+    } catch (error) {
+      handleError(error)
+      return
+    }
+
+    if (preview.assigned === 0) {
+      message.warning('当前没有可指派的在职员工，请先在组织管理中添加员工')
+      return
+    }
+
+    const unbound = Math.max(preview.assigned - preview.bound_wechat, 0)
+    try {
+      await modal.confirm({
+        title: '确认发布考试？',
+        content: [
+          '发布后题目快照将冻结，不能再修改题目。',
+          `本次将通知 ${preview.assigned} 名员工`,
+          unbound > 0
+            ? `其中 ${unbound} 人尚未绑定微信，只能在小程序内看到消息`
+            : '全部员工已绑定微信',
+        ].join('；'),
+        okText: '发布并通知',
+        cancelText: '取消',
+      })
+    } catch {
+      return
+    }
+
     try {
       await publishAdminExam(Number(id))
-      message.success('考试已发布，题目快照已冻结')
+      message.success(`考试已发布，已通知 ${preview.assigned} 名员工`)
       setDrawerOpen(false)
       await loadExams()
     } catch (error) {

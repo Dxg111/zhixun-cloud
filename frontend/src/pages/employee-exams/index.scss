@@ -170,6 +170,30 @@
   gap: 16px;
 }
 
+.employee-exam-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.employee-exam-title-row .employee-exam-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.employee-exam-new {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--surface);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
 .employee-exam-title {
   flex: 1;
   font-size: 30px;

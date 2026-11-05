@@ -726,6 +726,15 @@ export function getAdminExam(examId: number) {
   return request<AdminExamDetail>(`/admin/exams/${examId}`)
 }
 
+export interface ExamNotifyPreview {
+  assigned: number
+  bound_wechat: number
+}
+
+export function getExamNotifyPreview(examId: number) {
+  return request<ExamNotifyPreview>(`/admin/exams/${examId}/notify-preview`)
+}
+
 export function publishAdminExam(examId: number) {
   return request<AdminExam>(`/admin/exams/${examId}/publish`, { method: 'POST' })
 }

@@ -497,6 +497,28 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
             ON DELETE SET NULL ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
+    """
+    CREATE TABLE IF NOT EXISTS notifications (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        tenant_code VARCHAR(64) NOT NULL DEFAULT 'demo',
+        recipient_type VARCHAR(20) NOT NULL,
+        recipient_id BIGINT UNSIGNED NOT NULL,
+        type VARCHAR(40) NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        content VARCHAR(500) NOT NULL DEFAULT '',
+        link_page VARCHAR(120) NOT NULL DEFAULT '',
+        link_params VARCHAR(500) NOT NULL DEFAULT '',
+        biz_type VARCHAR(30) NOT NULL DEFAULT '',
+        biz_id BIGINT UNSIGNED NULL,
+        read_at DATETIME NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_notifications_biz
+            (recipient_type, recipient_id, type, biz_type, biz_id),
+        KEY idx_notifications_unread (recipient_type, recipient_id, read_at, created_at),
+        KEY idx_notifications_tenant_created (tenant_code, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """,
 ]
 
 

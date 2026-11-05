@@ -21,6 +21,7 @@ from app.api.v1.routes import (
     admin_settings,
     auth,
     employee,
+    employee_notifications,
     health,
     knowledge,
     quiz,
@@ -92,6 +93,7 @@ app.include_router(admin_settings.router, prefix="/api/v1")
 app.include_router(admin_exams.router, prefix="/api/v1")
 app.include_router(admin_join_requests.router, prefix="/api/v1")
 app.include_router(employee.router, prefix="/api/v1")
+app.include_router(employee_notifications.router, prefix="/api/v1")
 app.include_router(quiz.router, prefix="/api/v1")
 app.include_router(report.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")

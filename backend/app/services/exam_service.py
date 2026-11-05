@@ -24,7 +24,9 @@ from app.repositories import (
     admin_org_repository,
     export_repository,
     knowledge_card_repository,
+    notification_repository,
 )
+from app.services import notification_service, settings_service
 
 logger = structlog.get_logger()
 
@@ -180,6 +182,21 @@ async def assign_exam(
     return {"assigned": assigned, "employee_ids": resolved_ids}
 
 
+async def get_notify_preview(tenant_code: str, exam_id: int) -> dict:
+    """发布前预览：本次会通知多少人、其中多少人已绑定微信。"""
+    exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
+    if exam is None:
+        raise AdminExamError("考试不存在")
+
+    employee_ids = await admin_exam_repository.list_assigned_employee_ids(exam_id)
+    if not employee_ids:
+        # 未配置指派时，发布逻辑会回退为全部在职员工
+        employee_ids = await admin_org_repository.list_active_employee_ids(tenant_code)
+
+    bound = await notification_repository.count_bound_wechat(employee_ids)
+    return {"assigned": len(employee_ids), "bound_wechat": bound}
+
+
 async def publish_exam(tenant_code: str, exam_id: int) -> ExamItem:
     exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
     if exam is None:
@@ -203,8 +220,34 @@ async def publish_exam(tenant_code: str, exam_id: int) -> ExamItem:
     updated = await admin_exam_repository.get_exam(tenant_code, exam_id)
     if updated is None:
         raise AdminExamError("考试不存在")
+    await _notify_publish(tenant_code, exam_id, updated)
     logger.info("exam_published", tenant_code=tenant_code, exam_id=exam_id, assigned=assigned)
     return _to_item(updated)
+
+
+async def _notify_publish(tenant_code: str, exam_id: int, exam: dict) -> None:
+    """发布后通知被指派员工；通知失败不影响发布结果。"""
+    try:
+        settings = await settings_service.get_settings(tenant_code)
+        if not settings.notify_assigned:
+            return
+        employee_ids = await admin_exam_repository.list_assigned_employee_ids(exam_id)
+        await notification_service.notify_exam_assigned(
+            tenant_code,
+            exam_id,
+            exam["title"],
+            employee_ids,
+            end_at=exam.get("end_at"),
+            question_count=exam.get("question_count"),
+        )
+    except Exception as exc:
+        logger.error(
+            "exam_publish_notify_failed",
+            tenant_code=tenant_code,
+            exam_id=exam_id,
+            error=str(exc),
+            exc_info=True,
+        )
 
 
 async def close_exam(tenant_code: str, exam_id: int) -> ExamItem:

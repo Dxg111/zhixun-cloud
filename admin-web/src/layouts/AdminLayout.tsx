@@ -32,7 +32,7 @@ import {
   Typography,
   type MenuProps,
 } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { clearToken, getDashboard, getStoredUser } from '../services/api'
 import { useThemeMode } from '../theme/ThemeProvider'
@@ -152,20 +152,35 @@ export default function AdminLayout() {
     if (query) setSearchValue(query)
   }, [location.pathname, location.search])
 
-  useEffect(() => {
-    let cancelled = false
-    getDashboard()
-      .then((data) => {
-        if (cancelled) return
-        setPendingQuestions(data.pending_questions)
-        setPendingCards(data.pending_cards)
-        setPendingJoinRequests(data.pending_join_requests)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
+  const loadBadges = useCallback(async () => {
+    try {
+      const data = await getDashboard()
+      setPendingQuestions(data.pending_questions)
+      setPendingCards(data.pending_cards)
+      setPendingJoinRequests(data.pending_join_requests)
+    } catch {
+      // 徽标加载失败不打断页面
     }
-  }, [location.pathname])
+  }, [])
+
+  useEffect(() => {
+    void loadBadges()
+  }, [loadBadges, location.pathname])
+
+  // 停留在同一页面时，新加入申请/待审核内容也能在 1 分钟内冒红点
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadBadges()
+    }, 60000)
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') void loadBadges()
+    }
+    document.addEventListener('visibilitychange', handleVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', handleVisible)
+    }
+  }, [loadBadges])
 
   const menuItems = useMemo(
     () => buildMenuItems(pendingQuestions, pendingCards, pendingJoinRequests),

@@ -1,6 +1,7 @@
 import { PropsWithChildren, useEffect } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { getToken, setToken, setCachedUser, loginByCode, resolveLogin } from './services/api'
+import { refreshNotificationSummary } from './services/notification'
 import './app.scss'
 
 function App({ children }: PropsWithChildren) {
@@ -26,6 +27,11 @@ function App({ children }: PropsWithChildren) {
       })
     }
   }, [])
+
+  // 从后台切回小程序时同步未读角标，员工无需刷新页面即可看到新考试
+  useDidShow(() => {
+    void refreshNotificationSummary()
+  })
 
   return children
 }

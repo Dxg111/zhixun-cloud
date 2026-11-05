@@ -658,6 +658,75 @@ export function getEmployeeResult(attemptId: number) {
   return employeeRequest<EmployeeResultResponse>(`/employee/attempts/${attemptId}/result`)
 }
 
+/* ---- 站内通知 ---- */
+
+export interface NotificationItem {
+  id: number
+  type: string
+  title: string
+  content: string
+  link_page: string
+  link_params: string
+  biz_type: string
+  biz_id: number | null
+  read: boolean
+  created_at: string
+}
+
+export interface NotificationSummary {
+  unread_count: number
+  unread_exam_ids: number[]
+  pending_exam_count: number
+  items: NotificationItem[]
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[]
+  total: number
+  unread_count: number
+  page: number
+  page_size: number
+}
+
+export function getNotificationSummary() {
+  return employeeRequest<NotificationSummary>('/employee/notifications/summary')
+}
+
+export function listNotifications(params: { unreadOnly?: boolean; page?: number; pageSize?: number } = {}) {
+  const query = [
+    `unread_only=${params.unreadOnly ? 'true' : 'false'}`,
+    `page=${params.page ?? 1}`,
+    `page_size=${params.pageSize ?? 20}`,
+  ].join('&')
+  return employeeRequest<NotificationListResponse>(`/employee/notifications?${query}`)
+}
+
+export function markNotificationRead(id: number) {
+  return employeeRequest<{ updated: number }>(`/employee/notifications/${id}/read`, {
+    method: 'POST',
+  })
+}
+
+export function markAllNotificationsRead() {
+  return employeeRequest<{ updated: number }>('/employee/notifications/read-all', {
+    method: 'POST',
+  })
+}
+
+export function markNotificationsReadByExamIds(examIds: number[]) {
+  return employeeRequest<{ updated: number }>('/employee/notifications/read-exams', {
+    method: 'POST',
+    data: { exam_ids: examIds },
+  })
+}
+
+export function markNotificationsReadByBiz(bizType: string, bizId: number) {
+  return employeeRequest<{ updated: number }>('/employee/notifications/read-by-biz', {
+    method: 'POST',
+    data: { biz_type: bizType, biz_id: bizId },
+  })
+}
+
 /* ---- 考前知识卡 ---- */
 
 export interface EmployeeCardPoint {

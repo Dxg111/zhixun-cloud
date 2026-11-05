@@ -1,20 +1,42 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import {
   getEmployeeToken,
   getEmployeeUser,
   listEmployeeExams,
+  markNotificationsReadByBiz,
+  markNotificationsReadByExamIds,
   type EmployeeExamItem,
 } from '../../services/api'
+import { refreshNotificationSummary } from '../../services/notification'
 import './index.scss'
 
 export default function EmployeeExamsPage() {
   const [exams, setExams] = useState<EmployeeExamItem[]>([])
+  const [unreadExamIds, setUnreadExamIds] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const employee = getEmployeeUser()
 
-  const loadExams = async () => {
+  const loadUnread = useCallback(async (autoRead = false) => {
+    const summary = await refreshNotificationSummary()
+    const unreadIds = summary?.unread_exam_ids ?? []
+    setUnreadExamIds(unreadIds)
+
+    // 进入列表即视为已知悉这些考试提醒：清除角标，下次进入不再显示「新」
+    // 当前这一次仍保留标签，让用户看清哪几场是新指派的
+    if (autoRead && unreadIds.length > 0) {
+      try {
+        await markNotificationsReadByExamIds(unreadIds)
+        await refreshNotificationSummary()
+      } catch {
+        // 标记失败不阻断列表展示，下次进入会重试
+      }
+    }
+  }, [])
+
+  const loadExams = useCallback(async () => {
     if (!getEmployeeToken()) {
       Taro.redirectTo({ url: '/pages/employee-login/index' })
       return
@@ -23,6 +45,7 @@ export default function EmployeeExamsPage() {
     try {
       const data = await listEmployeeExams()
       setExams(data.items)
+      await loadUnread(true)
     } catch (error: any) {
       Taro.showToast({ title: error?.message || '考试加载失败', icon: 'none' })
       if (!getEmployeeToken()) {
@@ -31,13 +54,50 @@ export default function EmployeeExamsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [loadUnread])
+
+  const refreshUnread = useCallback(() => {
+    loadUnread().catch(() => {})
+  }, [loadUnread])
+
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current)
+      pollTimer.current = null
+    }
+  }, [])
+
+  useEffect(() => () => stopPolling(), [stopPolling])
 
   useDidShow(() => {
     loadExams()
+    // 停留在列表页时只轮询轻量未读接口，发现新指派立即打「新」标签
+    stopPolling()
+    pollTimer.current = setInterval(refreshUnread, 60000)
   })
 
+  useDidHide(() => {
+    stopPolling()
+  })
+
+  usePullDownRefresh(async () => {
+    await loadExams()
+    Taro.stopPullDownRefresh()
+  })
+
+  const markExamRead = async (examId: number) => {
+    if (!unreadExamIds.includes(examId)) return
+    try {
+      await markNotificationsReadByBiz('exam', examId)
+    } catch {
+      // 已读失败不阻断进入考试
+    }
+    setUnreadExamIds((prev) => prev.filter((id) => id !== examId))
+    await refreshNotificationSummary()
+  }
+
   const openExam = (exam: EmployeeExamItem) => {
+    void markExamRead(exam.id)
     if (exam.attempt_status === 'submitted' && exam.attempt_id) {
       Taro.navigateTo({ url: `/pages/employee-result/index?attemptId=${exam.attempt_id}` })
       return
@@ -142,7 +202,12 @@ export default function EmployeeExamsPage() {
                 }`}
               >
                 <View className='employee-exam-top'>
-                  <Text className='employee-exam-title'>{exam.title}</Text>
+                  <View className='employee-exam-title-row'>
+                    {unreadExamIds.includes(exam.id) && !submitted && (
+                      <Text className='employee-exam-new'>新</Text>
+                    )}
+                    <Text className='employee-exam-title'>{exam.title}</Text>
+                  </View>
                   <Text
                     className={`employee-exam-status ${
                       closed ? 'is-closed' : submitted ? 'is-done' : inProgress ? 'is-progress' : ''

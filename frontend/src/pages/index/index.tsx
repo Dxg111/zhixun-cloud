@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { View, Text, Textarea, Image } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import {
   generateQuizAsync,
   pollQuizTask,
@@ -10,9 +10,9 @@ import {
   getEmployeeToken,
   getEmployeeUser,
   getUsableAvatarUrl,
-  listEmployeeExams,
 } from '../../services/api'
-import type { UserBrief, QuizHistoryItem } from '../../services/api'
+import type { NotificationSummary, UserBrief, QuizHistoryItem } from '../../services/api'
+import { refreshNotificationSummary } from '../../services/notification'
 import './index.scss'
 
 export default function IndexPage() {
@@ -23,22 +23,14 @@ export default function IndexPage() {
   const [user, setUser] = useState<UserBrief | null>(null)
   const [historyItems, setHistoryItems] = useState<QuizHistoryItem[]>([])
   const [historyTotal, setHistoryTotal] = useState(0)
-  const [employeePending, setEmployeePending] = useState<number | null>(null)
+  const [employeeSummary, setEmployeeSummary] = useState<NotificationSummary | null>(null)
   const didShowRef = useRef(false)
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const loadEmployeePending = useCallback(() => {
-    if (!getEmployeeToken()) {
-      setEmployeePending(null)
-      return
-    }
-    listEmployeeExams()
-      .then((res) => {
-        const pending = res.items.filter(
-          (item) => item.status !== 'closed' && item.attempt_status !== 'submitted',
-        )
-        setEmployeePending(pending.length)
-      })
-      .catch(() => setEmployeePending(null))
+  const loadEmployeeSummary = useCallback(() => {
+    refreshNotificationSummary()
+      .then((summary) => setEmployeeSummary(summary))
+      .catch(() => {})
   }, [])
 
   const loadData = useCallback(async () => {
@@ -52,18 +44,43 @@ export default function IndexPage() {
         setHistoryTotal(res.total)
       })
       .catch(() => {})
-    loadEmployeePending()
-  }, [loadEmployeePending])
+    loadEmployeeSummary()
+  }, [loadEmployeeSummary])
+
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current)
+      pollTimer.current = null
+    }
+  }, [])
+
+  const startPolling = useCallback(() => {
+    stopPolling()
+    // 只轮询轻量未读接口；页面隐藏或离开时停止，避免无效请求
+    pollTimer.current = setInterval(loadEmployeeSummary, 60000)
+  }, [loadEmployeeSummary, stopPolling])
 
   useEffect(() => { loadData() }, [loadData])
 
+  useEffect(() => () => stopPolling(), [stopPolling])
+
   // 每次页面显示时刷新（从其他页面返回后）。首次显示由 useEffect 负责，避免登录完成前抢先请求。
   useDidShow(() => {
+    startPolling()
     if (!didShowRef.current) {
       didShowRef.current = true
       return
     }
     void loadData()
+  })
+
+  useDidHide(() => {
+    stopPolling()
+  })
+
+  usePullDownRefresh(async () => {
+    await loadData()
+    Taro.stopPullDownRefresh()
   })
 
   const handleGenerate = async () => {
@@ -107,6 +124,9 @@ export default function IndexPage() {
   const employeeUser = getEmployeeUser()
   const displayName = employeeUser?.name || user?.nickname || '同学'
   const displayOrg = employeeUser?.org_path || '企业学习中心'
+  const employeeJoined = Boolean(getEmployeeToken())
+  const unreadCount = employeeSummary?.unread_count ?? 0
+  const employeePending = employeeSummary?.pending_exam_count ?? 0
 
   return (
     <View className='index-page paper-bg'>
@@ -146,16 +166,20 @@ export default function IndexPage() {
           <View className='enterprise-entry-body'>
             <View className='enterprise-entry-title-row'>
               <Text className='enterprise-entry-title'>企业培训</Text>
-              {employeePending !== null && employeePending > 0 && (
+              {unreadCount > 0 ? (
+                <Text className='enterprise-entry-badge'>{unreadCount} 条新消息</Text>
+              ) : employeePending > 0 ? (
                 <Text className='enterprise-entry-badge'>{employeePending} 项待办</Text>
-              )}
+              ) : null}
             </View>
             <Text className='enterprise-entry-desc'>
-              {employeePending === null
-                ? '登录后查看待办考试与考前知识卡'
-                : employeePending > 0
-                  ? '有考试待完成，先读知识卡再进入考试'
-                  : '暂无待办考试，可查看错题与知识卡'}
+              {!employeeJoined
+                ? '加入企业后查看待办考试与考前知识卡'
+                : unreadCount > 0
+                  ? '有新的考试指派，进入查看详情'
+                  : employeePending > 0
+                    ? '有考试待完成，先读知识卡再进入考试'
+                    : '暂无待办考试，可查看错题与知识卡'}
             </Text>
           </View>
         </View>
