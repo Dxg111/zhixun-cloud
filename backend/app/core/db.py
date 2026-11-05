@@ -236,6 +236,7 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
         name VARCHAR(100) NOT NULL,
         role VARCHAR(30) NOT NULL DEFAULT '员工',
         status VARCHAR(20) NOT NULL DEFAULT 'active',
+        notify_deadline TINYINT(1) NOT NULL DEFAULT 1,
         invite_code VARCHAR(32) NOT NULL,
         invite_status VARCHAR(20) NOT NULL DEFAULT 'unbound',
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -519,6 +520,19 @@ SCHEMA_STATEMENTS: Final[list[str]] = [
         KEY idx_notifications_tenant_created (tenant_code, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
+    """
+    CREATE TABLE IF NOT EXISTS wechat_subscriptions (
+        user_id BIGINT UNSIGNED NOT NULL,
+        template_id VARCHAR(64) NOT NULL,
+        remaining INT NOT NULL DEFAULT 0,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, template_id),
+        CONSTRAINT fk_wechat_subscriptions_user
+            FOREIGN KEY (user_id) REFERENCES users (id)
+            ON DELETE CASCADE ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    """,
 ]
 
 
@@ -615,6 +629,12 @@ async def init_mysql() -> None:
                 "employees",
                 "uk_employees_user",
                 "ALTER TABLE employees ADD UNIQUE KEY uk_employees_user (user_id)",
+            )
+            await _ensure_column(
+                cursor,
+                "employees",
+                "notify_deadline",
+                "ALTER TABLE employees ADD COLUMN notify_deadline TINYINT(1) NOT NULL DEFAULT 1 AFTER status",
             )
 
     logger.info("mysql_initialized", database=settings.mysql_database)

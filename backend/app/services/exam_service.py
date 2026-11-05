@@ -237,6 +237,13 @@ async def get_notify_preview(tenant_code: str, exam_id: int) -> dict:
     return {"assigned": len(employee_ids), "bound_wechat": bound}
 
 
+async def get_notification_stats(tenant_code: str, exam_id: int) -> dict:
+    exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
+    if exam is None:
+        raise AdminExamError("考试不存在")
+    return await admin_exam_repository.get_notification_stats(tenant_code, exam_id)
+
+
 async def publish_exam(tenant_code: str, exam_id: int) -> ExamItem:
     exam = await admin_exam_repository.get_exam(tenant_code, exam_id)
     if exam is None:

@@ -55,3 +55,11 @@ class ReadExamsRequest(BaseModel):
     """进入考试列表后批量清除新考试提醒。"""
 
     exam_ids: list[int] = Field(default_factory=list, max_length=100)
+
+
+class WechatSubscribeReport(BaseModel):
+    template_ids: list[str] = Field(default_factory=list, max_length=10)
+
+
+class NotificationPreferences(BaseModel):
+    notify_deadline: bool = True

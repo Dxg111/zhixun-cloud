@@ -714,6 +714,37 @@ export function markAllNotificationsRead() {
   })
 }
 
+export interface WechatSubscribeConfig {
+  enabled: boolean
+  templates: Record<string, string>
+}
+
+export interface NotificationPreferences {
+  notify_deadline: boolean
+}
+
+export function getWechatSubscribeConfig() {
+  return employeeRequest<WechatSubscribeConfig>('/employee/wechat-subscribe/config')
+}
+
+export function reportWechatSubscriptions(templateIds: string[]) {
+  return employeeRequest<{ recorded: number }>(
+    '/employee/wechat-subscribe/subscriptions',
+    { method: 'POST', data: { template_ids: templateIds } },
+  )
+}
+
+export function getNotificationPreferences() {
+  return employeeRequest<NotificationPreferences>('/employee/notification-preferences')
+}
+
+export function updateNotificationPreferences(prefs: NotificationPreferences) {
+  return employeeRequest<NotificationPreferences>('/employee/notification-preferences', {
+    method: 'PUT',
+    data: prefs,
+  })
+}
+
 export function markNotificationsReadByExamIds(examIds: number[]) {
   return employeeRequest<{ updated: number }>('/employee/notifications/read-exams', {
     method: 'POST',

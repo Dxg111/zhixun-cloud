@@ -307,6 +307,64 @@ async def list_assigned_employee_ids(exam_id: int) -> list[int]:
             return [int(row[0]) for row in await cur.fetchall()]
 
 
+async def get_notification_stats(tenant_code: str, exam_id: int) -> dict:
+    """考试通知送达情况：已指派、已通知、已读、微信绑定。"""
+    pool = get_mysql_pool()
+    if pool is None:
+        return {
+            "assigned": 0,
+            "notified": 0,
+            "read": 0,
+            "bound_wechat": 0,
+            "unbound": [],
+        }
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COUNT(*) FROM exam_assignments WHERE exam_id = %s", (exam_id,)
+            )
+            assigned = int((await cur.fetchone())[0])
+
+            await cur.execute(
+                "SELECT COUNT(*), SUM(read_at IS NOT NULL) FROM notifications "
+                "WHERE tenant_code = %s AND recipient_type = 'employee' "
+                "AND type = 'exam_assigned' AND biz_type = 'exam' AND biz_id = %s",
+                (tenant_code, exam_id),
+            )
+            row = await cur.fetchone()
+            notified = int(row[0] or 0)
+            read = int(row[1] or 0)
+
+            await cur.execute(
+                "SELECT COUNT(*) FROM exam_assignments a "
+                "JOIN employees e ON e.id = a.employee_id "
+                "WHERE a.exam_id = %s AND e.user_id IS NOT NULL",
+                (exam_id,),
+            )
+            bound = int((await cur.fetchone())[0])
+
+            await cur.execute(
+                "SELECT e.id, e.name, e.employee_no FROM exam_assignments a "
+                "JOIN employees e ON e.id = a.employee_id "
+                "WHERE a.exam_id = %s AND e.user_id IS NULL "
+                "ORDER BY e.id ASC LIMIT 50",
+                (exam_id,),
+            )
+            unbound = [
+                {"id": int(item[0]), "name": item[1], "employee_no": item[2]}
+                for item in await cur.fetchall()
+            ]
+
+    return {
+        "assigned": assigned,
+        "notified": notified,
+        "read": read,
+        "bound_wechat": bound,
+        "unbound": unbound,
+    }
+
+
 async def list_incomplete_employee_ids(exam_id: int) -> list[int]:
     """已指派但尚未提交的考试员工。"""
     pool = get_mysql_pool()

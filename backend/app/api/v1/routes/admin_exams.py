@@ -110,6 +110,12 @@ async def assign_exam(
     return ApiResponse.success(data=result)
 
 
+@router.get("/exams/{exam_id}/notification-stats", response_model=ApiResponse)
+async def get_notification_stats(exam_id: int, context: dict = Depends(get_admin_context)):
+    result = await exam_service.get_notification_stats(context["tenant_code"], exam_id)
+    return ApiResponse.success(data=result)
+
+
 @router.get("/exams/{exam_id}/notify-preview", response_model=ApiResponse)
 async def get_notify_preview(exam_id: int, context: dict = Depends(get_admin_context)):
     result = await exam_service.get_notify_preview(context["tenant_code"], exam_id)

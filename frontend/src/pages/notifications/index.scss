@@ -41,6 +41,53 @@
   }
 }
 
+.notifications-settings {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.notifications-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+
+  & + & {
+    border-top: 1px solid var(--line);
+  }
+}
+
+.notifications-setting-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.notifications-setting-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.notifications-setting-desc {
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.notifications-setting-action {
+  flex-shrink: 0;
+  font-size: 23px;
+  color: var(--primary);
+}
+
 .notifications-list {
   display: flex;
   flex-direction: column;

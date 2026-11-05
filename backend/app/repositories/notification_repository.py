@@ -308,6 +308,7 @@ async def list_deadline_candidates(hours: int) -> list[tuple]:
             await cur.execute(
                 "SELECT e.tenant_code, e.id, e.title, e.end_at, a.employee_id "
                 "FROM exams e JOIN exam_assignments a ON a.exam_id = e.id "
+                "JOIN employees emp ON emp.id = a.employee_id AND emp.notify_deadline = 1 "
                 "WHERE e.status = 'published' AND e.end_at IS NOT NULL "
                 "AND e.end_at > NOW() "
                 f"AND e.end_at <= DATE_ADD(NOW(), INTERVAL {safe_hours} HOUR) "

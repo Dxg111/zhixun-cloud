@@ -1,12 +1,17 @@
-import { useCallback, useState } from 'react'
-import { View, Text } from '@tarojs/components'
+import { useCallback, useEffect, useState } from 'react'
+import { View, Text, Switch } from '@tarojs/components'
 import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import {
   getEmployeeToken,
+  getNotificationPreferences,
+  getWechatSubscribeConfig,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  reportWechatSubscriptions,
+  updateNotificationPreferences,
   type NotificationItem,
+  type WechatSubscribeConfig,
 } from '../../services/api'
 import { refreshNotificationSummary } from '../../services/notification'
 import './index.scss'
@@ -37,6 +42,57 @@ export default function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [wechatConfig, setWechatConfig] = useState<WechatSubscribeConfig | null>(null)
+  const [notifyDeadline, setNotifyDeadline] = useState(true)
+  const [prefSaving, setPrefSaving] = useState(false)
+
+  useEffect(() => {
+    if (!getEmployeeToken()) return
+    getWechatSubscribeConfig()
+      .then(setWechatConfig)
+      .catch(() => {})
+    getNotificationPreferences()
+      .then((prefs) => setNotifyDeadline(prefs.notify_deadline))
+      .catch(() => {})
+  }, [])
+
+  const handleSubscribe = async () => {
+    const tmplIds = Object.values(wechatConfig?.templates || {})
+    if (!tmplIds.length) {
+      Taro.showToast({ title: '暂未配置微信提醒模板', icon: 'none' })
+      return
+    }
+    try {
+      // Taro 4.1 的类型定义要求 entityIds，但微信小程序实际 API 使用 tmplIds
+      const result = await Taro.requestSubscribeMessage({ tmplIds } as any)
+      const accepted = tmplIds.filter(
+        (id) => (result as Record<string, string>)[id] === 'accept',
+      )
+      if (!accepted.length) {
+        Taro.showToast({ title: '未授权，仍可在小程序内收到消息', icon: 'none' })
+        return
+      }
+      await reportWechatSubscriptions(accepted)
+      Taro.showToast({ title: '已开启微信提醒', icon: 'none' })
+    } catch {
+      Taro.showToast({ title: '开启失败，请在微信设置中允许订阅消息', icon: 'none' })
+    }
+  }
+
+  const handleToggleDeadline = async () => {
+    if (prefSaving) return
+    const next = !notifyDeadline
+    setNotifyDeadline(next)
+    setPrefSaving(true)
+    try {
+      await updateNotificationPreferences({ notify_deadline: next })
+    } catch (error: any) {
+      setNotifyDeadline(!next)
+      Taro.showToast({ title: error?.message || '设置保存失败', icon: 'none' })
+    } finally {
+      setPrefSaving(false)
+    }
+  }
 
   const load = useCallback(async (onlyUnread: boolean) => {
     if (!getEmployeeToken()) {
@@ -136,6 +192,34 @@ export default function NotificationsPage() {
         >
           全部已读
         </Text>
+      </View>
+
+      <View className='notifications-settings'>
+        {wechatConfig?.enabled ? (
+          <View className='notifications-setting-row' onClick={handleSubscribe}>
+            <View className='notifications-setting-body'>
+              <Text className='notifications-setting-title'>微信提醒</Text>
+              <Text className='notifications-setting-desc'>
+                开启后可在微信服务通知中收到考试提醒
+              </Text>
+            </View>
+            <Text className='notifications-setting-action'>开启</Text>
+          </View>
+        ) : null}
+
+        <View className='notifications-setting-row'>
+          <View className='notifications-setting-body'>
+            <Text className='notifications-setting-title'>截止前 24 小时提醒</Text>
+            <Text className='notifications-setting-desc'>
+              关闭后不再收到考试即将截止的提醒
+            </Text>
+          </View>
+          <Switch
+            checked={notifyDeadline}
+            color='#1f4a38'
+            onChange={handleToggleDeadline}
+          />
+        </View>
       </View>
 
       {loading && items.length === 0 ? (

@@ -732,6 +732,18 @@ export interface ExamNotifyPreview {
   bound_wechat: number
 }
 
+export interface ExamNotificationStats {
+  assigned: number
+  notified: number
+  read: number
+  bound_wechat: number
+  unbound: { id: number; name: string; employee_no: string }[]
+}
+
+export function getExamNotificationStats(examId: number) {
+  return request<ExamNotificationStats>(`/admin/exams/${examId}/notification-stats`)
+}
+
 export function getExamNotifyPreview(examId: number) {
   return request<ExamNotifyPreview>(`/admin/exams/${examId}/notify-preview`)
 }

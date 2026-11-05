@@ -1,10 +1,12 @@
 import { Button, Col, Drawer, List, Progress, Row, Space, Statistic, Typography } from 'antd'
 import type { Exam } from '../types'
+import type { ExamNotificationStats } from '../services/api'
 import StatusTag from './StatusTag'
 
 interface ExamDrawerProps {
   open: boolean
   exam: Exam | null
+  notifyStats?: ExamNotificationStats | null
   onClose: () => void
   onPublish: (id: string) => void
   onCloseExam: (id: string) => void
@@ -18,6 +20,7 @@ const DIST_LABELS = ['0–59', '60–69', '70–79', '80–89', '90–100']
 export default function ExamDrawer({
   open,
   exam,
+  notifyStats,
   onClose,
   onPublish,
   onCloseExam,
@@ -90,6 +93,43 @@ export default function ExamDrawer({
             />
           </Col>
         </Row>
+
+        {notifyStats ? (
+          <div>
+            <Typography.Text strong>通知送达</Typography.Text>
+            <Row gutter={[12, 8]} style={{ marginTop: 8 }}>
+              <Col span={8}>
+                <Statistic
+                  title="已通知"
+                  value={notifyStats.notified}
+                  suffix={`/ ${notifyStats.assigned}`}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic title="已读" value={notifyStats.read} />
+              </Col>
+              <Col span={8}>
+                <Statistic title="已绑定微信" value={notifyStats.bound_wechat} />
+              </Col>
+            </Row>
+            {notifyStats.unbound.length ? (
+              <Typography.Paragraph
+                type="secondary"
+                style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}
+              >
+                未绑定微信：
+                {notifyStats.unbound
+                  .slice(0, 8)
+                  .map((item) => item.name)
+                  .join('、')}
+                {notifyStats.unbound.length > 8
+                  ? ` 等 ${notifyStats.unbound.length} 人`
+                  : ''}
+                ，这些员工只能在小程序内看到消息。
+              </Typography.Paragraph>
+            ) : null}
+          </div>
+        ) : null}
 
         <div>
           <Typography.Text strong>成绩分布</Typography.Text>

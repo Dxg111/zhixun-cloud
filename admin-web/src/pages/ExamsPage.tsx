@@ -13,12 +13,14 @@ import {
   downloadExportTask,
   exportAdminExam,
   getAdminExam,
+  getExamNotificationStats,
   getExamNotifyPreview,
   getToken,
   listAdminExams,
   publishAdminExam,
   type AdminExam,
   type AdminExamDetail,
+  type ExamNotificationStats,
   type ExamNotifyPreview,
 } from '../services/api'
 import type { Exam } from '../types'
@@ -57,6 +59,7 @@ export default function ExamsPage() {
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null)
+  const [notifyStats, setNotifyStats] = useState<ExamNotificationStats | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [assignExamId, setAssignExamId] = useState<number | null>(null)
   const [cardsExamId, setCardsExamId] = useState<number | null>(null)
@@ -98,8 +101,12 @@ export default function ExamsPage() {
 
   const openExam = async (exam: AdminExam) => {
     try {
-      const detail = await getAdminExam(exam.id)
+      const [detail, stats] = await Promise.all([
+        getAdminExam(exam.id),
+        getExamNotificationStats(exam.id).catch(() => null),
+      ])
       setSelectedExam(toDrawerExam(detail))
+      setNotifyStats(stats)
       setDrawerOpen(true)
     } catch (error) {
       handleError(error)
@@ -109,8 +116,12 @@ export default function ExamsPage() {
   const refreshSelectedExam = useCallback(async () => {
     if (!selectedExam) return
     try {
-      const detail = await getAdminExam(Number(selectedExam.id))
+      const [detail, stats] = await Promise.all([
+        getAdminExam(Number(selectedExam.id)),
+        getExamNotificationStats(Number(selectedExam.id)).catch(() => null),
+      ])
       setSelectedExam(toDrawerExam(detail))
+      setNotifyStats(stats)
     } catch (error) {
       handleError(error)
     }
@@ -318,6 +329,7 @@ export default function ExamsPage() {
       <ExamDrawer
         open={drawerOpen}
         exam={selectedExam}
+        notifyStats={notifyStats}
         onClose={() => setDrawerOpen(false)}
         onPublish={handlePublish}
         onCloseExam={handleCloseExam}

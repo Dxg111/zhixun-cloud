@@ -71,6 +71,12 @@ class Settings(BaseSettings):
     admin_display_name: str = "李培训"
     admin_jwt_expire_minutes: int = 480  # 管理员 8 小时
 
+    # 微信订阅消息（模板需在小程序后台申请后填入；留空则不发送）
+    enable_wechat_subscribe: bool = True
+    wechat_subscribe_exam_assigned: str = ""
+    wechat_subscribe_result_ready: str = ""
+    wechat_subscribe_deadline: str = ""
+
     # 通知：截止提醒后台扫描
     enable_deadline_reminder: bool = True
     deadline_reminder_interval_seconds: int = 600

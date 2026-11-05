@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Iterable
 
@@ -16,6 +17,7 @@ from app.models.notification import (
     NotificationSummary,
 )
 from app.repositories import notification_repository
+from app.services import wechat_subscribe_service
 
 logger = structlog.get_logger()
 
@@ -35,6 +37,7 @@ async def notify_recipients(
     link_params: dict | None = None,
     biz_type: str = "",
     biz_id: int | None = None,
+    wechat_data: dict | None = None,
 ) -> int:
     ids = sorted({int(item) for item in recipient_ids if item})
     if not ids:
@@ -80,7 +83,37 @@ async def notify_recipients(
         recipients=len(ids),
         inserted=inserted,
     )
+
+    if recipient_type == RECIPIENT_EMPLOYEE and wechat_data is not None:
+        await _send_wechat(ids, type, wechat_data)
+
     return inserted
+
+
+async def _send_wechat(
+    employee_ids: list[int], notice_type: str, data: dict
+) -> None:
+    """尝试发送微信订阅消息；未授权或发送失败时静默降级为站内通知。"""
+    if not employee_ids:
+        return
+
+    try:
+        results = await asyncio.gather(
+            *[
+                wechat_subscribe_service.send_for_employee(
+                    employee_id, notice_type, data
+                )
+                for employee_id in employee_ids
+            ],
+            return_exceptions=True,
+        )
+    except Exception as exc:
+        logger.warning("wechat_batch_failed", error=str(exc))
+        return
+
+    sent = sum(1 for item in results if item is True)
+    if sent:
+        logger.info("wechat_sent", notice_type=notice_type, sent=sent)
 
 
 async def notify_exam_assigned(
@@ -109,6 +142,7 @@ async def notify_exam_assigned(
         link_page="pages/employee-exams/index",
         biz_type="exam",
         biz_id=exam_id,
+        wechat_data={"title": exam_title, "end_at": end_at},
     )
 
 
@@ -133,6 +167,7 @@ async def notify_result_ready(
         link_params={"attemptId": attempt_id},
         biz_type="attempt",
         biz_id=attempt_id,
+        wechat_data={"title": exam_title, "score": score, "passed": passed},
     )
 
 
@@ -172,6 +207,7 @@ async def notify_exam_deadline(
         link_page="pages/employee-exams/index",
         biz_type="exam_deadline",
         biz_id=exam_id,
+        wechat_data={"title": exam_title, "end_at": end_at},
     )
 
 
